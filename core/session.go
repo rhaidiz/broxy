@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -18,6 +17,8 @@ type Session struct {
 
 	MainGui *Broxygui
 	Config  *Config
+
+	LogC chan Log
 }
 
 func NewSession(path string) *Session {
@@ -28,6 +29,7 @@ func NewSession(path string) *Session {
 			Address: "127.0.0.1",
 			Port:    8080,
 		},
+		LogC: make(chan Log),
 	}
 }
 
@@ -45,19 +47,19 @@ func (s *Session) Info(mod string, message string) {
 	t := time.Now()
 	l := Log{Type: "I", ModuleName: mod, Time: t.Format("2006-01-02 15:04:05"), Message: message}
 	s.Logs = append(s.Logs, l)
-	fmt.Println(l.ToString())
+	go func() { s.LogC <- l }()
 }
 
 func (s *Session) Debug(mod string, message string) {
 	t := time.Now()
 	l := Log{Type: "I", ModuleName: mod, Time: t.Format("2006-01-02 15:04:05"), Message: message}
 	s.Logs = append(s.Logs, l)
-	fmt.Println(l.ToString())
+	go func() { s.LogC <- l }()
 }
 
 func (s *Session) Err(mod string, message string) {
 	t := time.Now()
 	l := Log{Type: "E", ModuleName: mod, Time: t.Format("2006-01-02 15:04:05"), Message: message}
 	s.Logs = append(s.Logs, l)
-	fmt.Println(l.ToString())
+	go func() { s.LogC <- l }()
 }
