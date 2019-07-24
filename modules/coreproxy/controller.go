@@ -62,7 +62,6 @@ func (c *CoreproxyController) RowClicked(r int) {
 func (c *CoreproxyController) StartProxy(b bool) {
 	if !c.isRunning {
 		// Start and stop the proxy
-		// fmt.Printf("Line: %s\n", c.Gui.ListenerLineEdit.DisplayText())
 		ip_port_regxp := "^((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)):(6553[0-5]|655[0-2][0-9]|65[0-4][0-9][0-9]|6[0-4][0-9][0-9][0-9]|[1-5]?[0-9]?[0-9]?[0-9]?[0-9])?$"
 
 		r := regexp.MustCompile(ip_port_regxp)
@@ -76,28 +75,23 @@ func (c *CoreproxyController) StartProxy(b bool) {
 				go func() {
 					c.Gui.StartStopBtn.SetText("Stop")
 					c.isRunning = true
-					fmt.Println("Proxy running")
+					c.Sess.Info(c.Proxy.Name(), "Starting proxy ...")
 					if e := c.Proxy.Start(); e != nil && e != http.ErrServerClosed {
-						fmt.Printf("Error %s\n", e)
-						//c.Maingui.Guicon.ShowErrorMsg(e.Error())
-						//c.QController.ErrorMsg(e.Error())
+						c.Sess.Err(c.Proxy.Name(), fmt.Sprintf("Error starting the proxy %s\n", e))
 						c.isRunning = false
 						c.Gui.StartStopBtn.SetText("Start")
 					}
 				}()
 			} else {
-				fmt.Printf("Error starting the proxy %s\n", e)
-				//c.Maingui.Guicon.ShowErrorMsg(e.Error())
-				//c.QController.ErrorMsg(e.Error())
+				c.Sess.Err(c.Proxy.Name(), fmt.Sprintf("Error starting the proxy %s\n", e))
 			}
 		} else {
-			//c.Maingui.Guicon.ShowErrorMsg("Wrong input")
-			//c.QController.ErrorMsg("Wrong input")
+			c.Sess.Err(c.Proxy.Name(), "Wrong input")
 		}
 	} else {
 		c.Proxy.Stop()
 		c.isRunning = false
-		fmt.Println("Proxy stopped")
+		c.Sess.Info(c.Proxy.Name(), "Stopping proxy.")
 		c.Gui.StartStopBtn.SetText("Start")
 	}
 }
