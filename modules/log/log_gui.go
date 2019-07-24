@@ -22,17 +22,23 @@ func NewLogGui(s *core.Session) *LogGui {
 	}
 }
 
-func (g *LogGui) SetTableModel(m *model.CustomTableModel) {
+func (g *LogGui) SetTableModel(m *model.SortFilterModel) {
 	g.view.RootContext().SetContextProperty("MyModel", m)
 }
 
 func (g *LogGui) GetModuleGui() widgets.QWidget_ITF {
+
+	widget := widgets.NewQWidget(nil, 0)
+	widget.SetLayout(widgets.NewQVBoxLayout())
+
 	// table view written in qml
 	g.view.SetTitle("Log table")
 	g.view.SetResizeMode(quick.QQuickView__SizeRootObjectToView)
 	g.view.SetSource(qtcore.NewQUrl3("qrc:/qml/log.qml", 0))
 
-	return widgets.QWidget_CreateWindowContainer(g.view, nil, 0)
+	widget.Layout().AddWidget(widgets.QWidget_CreateWindowContainer(g.view, nil, 0))
+
+	return widget
 }
 
 func (m *LogGui) Name() string {

@@ -3,6 +3,7 @@ package log
 import (
 	"github.com/rhaidiz/broxy/core"
 	"github.com/rhaidiz/broxy/modules/log/model"
+	_ "github.com/therecipe/qt/core"
 )
 
 type LogController struct {
@@ -10,7 +11,8 @@ type LogController struct {
 	Gui    *LogGui
 	Sess   *core.Session
 
-	model *model.CustomTableModel
+	//model     *model.CustomTableModel
+	modelSort *model.SortFilterModel
 }
 
 func NewLogController(m *Log, g *LogGui, s *core.Session) *LogController {
@@ -20,15 +22,16 @@ func NewLogController(m *Log, g *LogGui, s *core.Session) *LogController {
 		Sess:   s,
 	}
 
-	c.model = model.NewCustomTableModel(nil)
+	//c.model = model.NewCustomTableModel(nil)
+	c.modelSort = model.NewSortFilterModel(nil)
 
-	c.Gui.SetTableModel(c.model)
+	c.Gui.SetTableModel(c.modelSort)
 	go c.logEvent()
 	return c
 }
 
-func (g *LogController) logEvent() {
-	for l := range g.Sess.LogC {
-		g.model.AddItem(l)
+func (c *LogController) logEvent() {
+	for l := range c.Sess.LogC {
+		c.modelSort.Custom.AddItem(l)
 	}
 }

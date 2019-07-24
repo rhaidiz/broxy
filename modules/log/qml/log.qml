@@ -12,6 +12,12 @@ import CustomQmlTypes 1.0		//CustomTableModel
 	
 	 			alternatingRowColors: false
 
+				sortIndicatorColumn: 2
+				sortIndicatorOrder : Qt.DescendingOrder
+				sortIndicatorVisible: true
+      	onSortIndicatorColumnChanged: tableview.model.sortTableView(tableview.getColumn(tableview.sortIndicatorColumn).role, sortIndicatorOrder)
+				onSortIndicatorOrderChanged: tableview.model.sortTableView(tableview.getColumn(tableview.sortIndicatorColumn).role, sortIndicatorOrder)
+
 				model: MyModel
 	
 				TableViewColumn {
@@ -32,4 +38,3 @@ import CustomQmlTypes 1.0		//CustomTableModel
 					title: role
 				}
 			}
-	
