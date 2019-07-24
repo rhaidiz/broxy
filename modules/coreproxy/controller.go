@@ -13,35 +13,28 @@ import (
 	"io/ioutil"
 )
 
-//type qController struct {
-//	core.QObject
-//
-//	// signals
-//	_ func(message string) 			`signal:"ErrorMsg"`
-//}
-
 type CoreproxyController struct {
 	Proxy *Coreproxy
 	Gui   *CoreproxyGui
 	Sess  *core.Session
-	//QController	*qController
 
 	isRunning bool
-	model     *model.CustomTableModel
+	model     *model.SortFilterModel
+	id        int
 
 	_ func() `signal:"mySignal"`
 }
 
 func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Session) *CoreproxyController {
 	c := &CoreproxyController{
-		Proxy: proxy,
-		Gui:   proxygui,
-		Sess:  s,
-		//QController	: NewQController(nil),
+		Proxy:     proxy,
+		Gui:       proxygui,
+		Sess:      s,
 		isRunning: false,
+		id:        0,
 	}
 
-	c.model = model.NewCustomTableModel(nil)
+	c.model = model.NewSortFilterModel(nil)
 
 	c.Proxy.OnReq = c.OnReq
 	c.Proxy.OnResp = c.OnResp
@@ -54,7 +47,7 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 
 func (c *CoreproxyController) RowClicked(r int) {
 	// load the request in the request\response tab
-	req, resp := c.model.GetReqResp(r)
+	req, resp := c.model.Custom.GetReqResp(r)
 	c.Gui.RequestText.SetPlainText(req.ToString())
 	c.Gui.ResponseText.SetPlainText(resp.ToString())
 }
@@ -105,7 +98,8 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) {
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
 	item.Resp = &model.Response{Status: r.Status, Body: bodyBytes, Proto: r.Proto, ContentLength: r.ContentLength, Headers: r.Header}
-	c.model.EditItem(item, ctx.Session)
+	// For whatever reason, I have to send a full HItem insteam of a Resp
+	c.model.Custom.EditItem(item, ctx.Session)
 }
 
 func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) {
@@ -116,7 +110,9 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) {
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
 	req := model.NewHItem(nil)
+	c.id = c.id + 1
+	req.ID = c.id
 	req.Req = &model.Request{Path: r.URL.Path, Schema: r.URL.Scheme, Method: r.Method, Body: bodyBytes, Host: r.Host, ContentLength: r.ContentLength, Headers: r.Header, Proto: r.Proto}
 	//c.model.Add()
-	c.model.AddItem(req, ctx.Session)
+	c.model.Custom.AddItem(req, ctx.Session)
 }

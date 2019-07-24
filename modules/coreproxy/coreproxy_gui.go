@@ -135,7 +135,7 @@ func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
 // 	g.tableModel = m
 // }
 
-func (g *CoreproxyGui) SetTableModel(m *model.CustomTableModel) {
+func (g *CoreproxyGui) SetTableModel(m *model.SortFilterModel) {
 	g.view.RootContext().SetContextProperty("MyModel", m)
 	g.tableBridge.setParent(g)
 	g.view.RootContext().SetContextProperty("tableBridge", g.tableBridge)

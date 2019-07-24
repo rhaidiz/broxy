@@ -73,12 +73,14 @@ func (r *Response) ToString() string {
 
 type HItem struct {
 	core.QObject
+	ID   int
 	Req  *Request
 	Resp *Response
 }
 
 const (
-	Method = int(core.Qt__UserRole) + 1<<iota
+	ID = int(core.Qt__UserRole) + 1<<iota
+	Method
 	Path
 	Schema
 	Status
@@ -95,6 +97,7 @@ func (m *CustomTableModel) row(i *HItem) int {
 
 func (m *CustomTableModel) roleNames() map[int]*core.QByteArray {
 	return map[int]*core.QByteArray{
+		ID:     core.NewQByteArray2("ID", -1),
 		Method: core.NewQByteArray2("Method", -1),
 		Path:   core.NewQByteArray2("Path", -1),
 		Schema: core.NewQByteArray2("Schema", -1),
@@ -108,15 +111,10 @@ type CustomTableModel struct {
 	_ func() `constructor:"init"`
 
 	modelData []HItem
+	hashMap   map[int64]*HItem
 
-	_ func()                     `signal:"add,auto"`
 	_ func(item *HItem, i int64) `signal:"addItem,auto"`
 	_ func(item *HItem, i int64) `signal:editItem,auto"`
-	_ func(item *HItem, i int64) `signal:prova,auto"`
-
-	hashMap map[int64]*HItem
-
-	_ func(row int) `signal:"test,auto"`
 }
 
 var mutex = &sync.Mutex{}
@@ -152,17 +150,6 @@ func (m *CustomTableModel) AddReq(r *http.Request, i int64) {
 	//m.hashMap[i] = HItem{Req: r, ReqBody: bodyBytes}
 }
 
-//func (m *CustomTableModel) AddResp(resp *http.Response)
-//{
-//
-//}
-
-func (m *CustomTableModel) add() {
-	m.BeginInsertRows(core.NewQModelIndex(), len(m.modelData), len(m.modelData))
-	m.modelData = append(m.modelData, HItem{Req: &Request{Method: "blabla123"}})
-	m.EndInsertRows()
-}
-
 func (m *CustomTableModel) addItem(item *HItem, i int64) {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -170,21 +157,6 @@ func (m *CustomTableModel) addItem(item *HItem, i int64) {
 	m.hashMap[i] = item
 	m.modelData = append(m.modelData, *item)
 	m.EndInsertRows()
-}
-
-func (m *CustomTableModel) test(row int) {
-	// this updates to add the request when it arrives
-	if len(m.modelData) == 0 {
-		return
-	}
-
-	m.DataChanged(m.Index(row, 3, core.NewQModelIndex()), m.Index(row, 3, core.NewQModelIndex()), []int{Method, Path, Schema, Status})
-	//m.DataChanged(m.Index(len(m.modelData)-1, 0, core.NewQModelIndex()), m.Index(len(m.modelData)-1, 1, core.NewQModelIndex()), []int{Method, Path, Schema, Status})
-
-}
-
-func (m *CustomTableModel) prova(item *HItem, i int64) {
-	fmt.Println(item.Resp)
 }
 
 func (m *CustomTableModel) editItem(item *HItem, i int64) {
@@ -198,34 +170,20 @@ func (m *CustomTableModel) editItem(item *HItem, i int64) {
 	m.DataChanged(m.Index(row, 3, core.NewQModelIndex()), m.Index(row, 3, core.NewQModelIndex()), []int{Method, Path, Schema, Status})
 }
 
-func (m *CustomTableModel) headerData(section int, orientation core.Qt__Orientation, role int) *core.QVariant {
-	if role != int(core.Qt__DisplayRole) || orientation == core.Qt__Vertical {
-		return m.HeaderDataDefault(section, orientation, role)
-	}
-
-	switch section {
-	case 0:
-		return core.NewQVariant14("Method")
-	case 1:
-		return core.NewQVariant14("Schema")
-	case 2:
-		return core.NewQVariant14("Path")
-	case 3:
-		return core.NewQVariant14("Status")
-	}
-	return core.NewQVariant()
-}
-
 func (m *CustomTableModel) rowCount(*core.QModelIndex) int {
 	return len(m.modelData)
 }
 
 func (m *CustomTableModel) columnCount(*core.QModelIndex) int {
-	return 4
+	return 5
 }
 func (m *CustomTableModel) data(index *core.QModelIndex, role int) *core.QVariant {
 	item := m.modelData[index.Row()]
+	println(role)
+	println(core.Qt__DescendingOrder)
 	switch role {
+	case ID:
+		return core.NewQVariant7(item.ID)
 	case Method:
 		return core.NewQVariant14(item.Req.Method)
 	case Path:
@@ -236,28 +194,6 @@ func (m *CustomTableModel) data(index *core.QModelIndex, role int) *core.QVarian
 		if item.Resp != nil {
 			return core.NewQVariant14(item.Resp.Status)
 		}
-	}
-	return core.NewQVariant()
-}
-
-func (m *CustomTableModel) data2(index *core.QModelIndex, role int) *core.QVariant {
-	if role != int(core.Qt__DisplayRole) {
-		return core.NewQVariant()
-	}
-
-	item := m.modelData[index.Row()]
-	switch m.HeaderData(index.Column(), core.Qt__Horizontal, role).ToString() {
-	case "Method":
-		return core.NewQVariant14(item.Req.Method)
-	case "Schema":
-		return core.NewQVariant14("test2")
-	case "Path":
-		return core.NewQVariant14("test3")
-	case "Status":
-		if item.Resp != nil {
-			return core.NewQVariant14(item.Resp.Status)
-		}
-		return core.NewQVariant14("")
 	}
 	return core.NewQVariant()
 }

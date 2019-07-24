@@ -20,6 +20,10 @@ Item {
 				Layout.fillWidth: true
 				Layout.fillHeight: true
 	
+				sortIndicatorVisible: true
+      	onSortIndicatorColumnChanged: tableview.model.sortTableView(tableview.getColumn(tableview.sortIndicatorColumn).role, sortIndicatorOrder)
+				onSortIndicatorOrderChanged: tableview.model.sortTableView(tableview.getColumn(tableview.sortIndicatorColumn).role, sortIndicatorOrder)
+
 	 			alternatingRowColors: false
 
 				//onClicked: { tableBridge.clicked(currentRow) }
@@ -43,6 +47,11 @@ Item {
 				}
 	
 				model: MyModel
+				
+				TableViewColumn {
+					role: "ID"
+					title: role
+				}
 	
 				TableViewColumn {
 					role: "Method"
