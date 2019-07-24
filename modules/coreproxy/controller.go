@@ -10,6 +10,7 @@ import (
 	"github.com/elazarl/goproxy"
 	"github.com/rhaidiz/broxy/core"
 	"github.com/rhaidiz/broxy/modules/coreproxy/model"
+	qtcore "github.com/therecipe/qt/core"
 	"io/ioutil"
 )
 
@@ -46,8 +47,9 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 }
 
 func (c *CoreproxyController) RowClicked(r int) {
+	actual_row := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
 	// load the request in the request\response tab
-	req, resp := c.model.Custom.GetReqResp(r)
+	req, resp := c.model.Custom.GetReqResp(actual_row - 1)
 	c.Gui.RequestText.SetPlainText(req.ToString())
 	c.Gui.ResponseText.SetPlainText(resp.ToString())
 }

@@ -27,6 +27,9 @@ func (r *Request) ToString() string {
 
 		Body
 	*/
+	if r == nil {
+		return ""
+	}
 	ret := fmt.Sprintf("%s %s %s\nHost: %s\n", r.Method, r.Path, r.Proto, r.Host)
 	for k, v := range r.Headers {
 		values := ""
@@ -56,6 +59,9 @@ func (r *Response) ToString() string {
 
 		Body
 	*/
+	if r == nil {
+		return ""
+	}
 	ret := fmt.Sprintf("%s %s\n", r.Proto, r.Status)
 	for k, v := range r.Headers {
 		values := ""
@@ -179,8 +185,6 @@ func (m *CustomTableModel) columnCount(*core.QModelIndex) int {
 }
 func (m *CustomTableModel) data(index *core.QModelIndex, role int) *core.QVariant {
 	item := m.modelData[index.Row()]
-	println(role)
-	println(core.Qt__DescendingOrder)
 	switch role {
 	case ID:
 		return core.NewQVariant7(item.ID)
