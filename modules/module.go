@@ -9,6 +9,6 @@ import (
 
 func LoadModules(s *core.Session) {
 	s.LoadModule(coreproxy.LoadCoreProxyModule(s))
-	s.LoadModule(repeater.NewRepeater(s), repeater.NewRepeaterGui(s))
+	s.LoadModule(repeater.LoadRepeaterModule(s))
 	s.LoadModule(log.LoadLogModule(s))
 }
