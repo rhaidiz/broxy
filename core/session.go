@@ -52,7 +52,7 @@ func (s *Session) Info(mod string, message string) {
 
 func (s *Session) Debug(mod string, message string) {
 	t := time.Now()
-	l := Log{Type: "I", ModuleName: mod, Time: t.Format("2006-01-02 15:04:05"), Message: message}
+	l := Log{Type: "D", ModuleName: mod, Time: t.Format("2006-01-02 15:04:05"), Message: message}
 	s.Logs = append(s.Logs, l)
 	go func() { s.LogC <- l }()
 }
