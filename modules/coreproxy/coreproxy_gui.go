@@ -48,6 +48,13 @@ type CoreproxyGui struct {
 	// settings tab
 	ListenerLineEdit *widgets.QLineEdit
 	StartStopBtn     *widgets.QPushButton
+
+	// interceptor
+	ForwardBtn        *widgets.QPushButton
+	DropBtn           *widgets.QPushButton
+	InterceptorToggle *widgets.QPushButton
+	InterceptorEditor *widgets.QPlainTextEdit
+	Interceptor       func(bool)
 }
 
 /*
@@ -82,6 +89,39 @@ func NewCoreproxyGui(s *core.Session) *CoreproxyGui {
 		tableBridge: NewTableBridge(nil),
 		view:        quick.NewQQuickView(nil),
 	}
+}
+
+func (g *CoreproxyGui) intercetorTabGui() widgets.QWidget_ITF {
+	widget := widgets.NewQWidget(nil, 0)
+	vlayout := widgets.NewQVBoxLayout()
+	widget.SetLayout(vlayout)
+
+	widget.SetContentsMargins(0, 0, 0, 0)
+
+	hlayout := widgets.NewQHBoxLayout()
+
+	g.ForwardBtn = widgets.NewQPushButton2("Forward", nil)
+	g.DropBtn = widgets.NewQPushButton2("Drop", nil)
+	g.InterceptorToggle = widgets.NewQPushButton2("Interceptor", nil)
+	spacerItem := widgets.NewQSpacerItem(400, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
+
+	hlayout.AddWidget(g.ForwardBtn, 0, qtcore.Qt__AlignLeft)
+	//g.ForwardBtn.ConnectClicked(g.Forward)
+	hlayout.AddWidget(g.DropBtn, 0, qtcore.Qt__AlignLeft)
+	//g.DropBtn.ConnectClicked(g.Drop)
+	hlayout.AddWidget(g.InterceptorToggle, 0, qtcore.Qt__AlignLeft)
+	//g.InterceptorToggle.ConnectClicked(g.Toggle)
+	g.InterceptorToggle.SetAutoRepeat(true)
+	g.InterceptorToggle.SetCheckable(true)
+	hlayout.AddItem(spacerItem)
+
+	vlayout.AddLayout(hlayout, 0)
+
+	g.InterceptorEditor = widgets.NewQPlainTextEdit(nil)
+	vlayout.AddWidget(g.InterceptorEditor, 0, 0)
+
+	return widget
+
 }
 
 func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
@@ -175,6 +215,7 @@ func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
 	// g.startBtn = widgets.NewQPushButton2("Start", nil)
 	// g.startBtn.ConnectClicked(g.StartProxy)
 
+	g.coreProxyGui.AddTab(g.intercetorTabGui(), "Interceptor")
 	g.coreProxyGui.AddTab(g.splitter, "History")
 	g.coreProxyGui.AddTab(g.settingsTabGui(), "Settings")
 

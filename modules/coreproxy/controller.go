@@ -24,15 +24,22 @@ type CoreproxyController struct {
 	id        int
 
 	_ func() `signal:"mySignal"`
+
+	interceptor       bool
+	interceptRequests bool
+	interceptResponse bool
 }
 
 func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Session) *CoreproxyController {
 	c := &CoreproxyController{
-		Proxy:     proxy,
-		Gui:       proxygui,
-		Sess:      s,
-		isRunning: false,
-		id:        0,
+		Proxy:             proxy,
+		Gui:               proxygui,
+		Sess:              s,
+		isRunning:         false,
+		id:                0,
+		interceptor:       false,
+		interceptRequests: false,
+		interceptResponse: false,
 	}
 
 	c.model = model.NewSortFilterModel(nil)
@@ -53,6 +60,10 @@ func (c *CoreproxyController) RowClicked(r int) {
 	c.Gui.RequestText.SetPlainText(req.ToString())
 	c.Gui.ResponseText.SetPlainText(resp.ToString())
 }
+
+//func (c *CoreproxyController) interceptorToggle(b bool) {
+//
+//}
 
 func (c *CoreproxyController) StartProxy(b bool) {
 	if !c.isRunning {
@@ -92,6 +103,8 @@ func (c *CoreproxyController) StartProxy(b bool) {
 }
 
 func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) {
+	// activate the interceptor
+
 	item := model.NewHItem(nil)
 	var bodyBytes []byte
 	if r != nil {
@@ -105,6 +118,10 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) {
 }
 
 func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) {
+	// activate interceptor
+	if c.interceptRequests {
+
+	}
 	var bodyBytes []byte
 	if r != nil {
 		bodyBytes, _ = ioutil.ReadAll(r.Body)
