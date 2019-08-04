@@ -54,7 +54,9 @@ type CoreproxyGui struct {
 	DropBtn           *widgets.QPushButton
 	InterceptorToggle *widgets.QPushButton
 	InterceptorEditor *widgets.QPlainTextEdit
-	Interceptor       func(bool)
+	Toggle            func(bool)
+	Forward           func(bool)
+	Drop              func(bool)
 }
 
 /*
@@ -106,11 +108,11 @@ func (g *CoreproxyGui) intercetorTabGui() widgets.QWidget_ITF {
 	spacerItem := widgets.NewQSpacerItem(400, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
 
 	hlayout.AddWidget(g.ForwardBtn, 0, qtcore.Qt__AlignLeft)
-	//g.ForwardBtn.ConnectClicked(g.Forward)
+	g.ForwardBtn.ConnectClicked(g.Forward)
 	hlayout.AddWidget(g.DropBtn, 0, qtcore.Qt__AlignLeft)
-	//g.DropBtn.ConnectClicked(g.Drop)
+	g.DropBtn.ConnectClicked(g.Drop)
 	hlayout.AddWidget(g.InterceptorToggle, 0, qtcore.Qt__AlignLeft)
-	//g.InterceptorToggle.ConnectClicked(g.Toggle)
+	g.InterceptorToggle.ConnectClicked(g.Toggle)
 	g.InterceptorToggle.SetAutoRepeat(true)
 	g.InterceptorToggle.SetCheckable(true)
 	hlayout.AddItem(spacerItem)

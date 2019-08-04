@@ -24,7 +24,7 @@ type Coreproxy struct {
 	Req     int
 	Resp    int
 	Srv     *http.Server
-	OnReq   func(*http.Request, *goproxy.ProxyCtx)
+	OnReq   func(*http.Request, *goproxy.ProxyCtx) (*http.Request, *http.Response)
 	OnResp  func(*http.Response, *goproxy.ProxyCtx)
 	status  bool
 	//tr      *transport.Transport
@@ -44,10 +44,10 @@ func NewCoreProxy(s *core.Session) *Coreproxy {
 		Proxyh:  goproxy.NewProxyHttpServer(),
 		Req:     0,
 		Resp:    0,
-		OnReq:   func(*http.Request, *goproxy.ProxyCtx) {},
-		OnResp:  func(*http.Response, *goproxy.ProxyCtx) {},
-		Sess:    s,
-		status:  false,
+		//OnReq:   func(*http.Request, *goproxy.ProxyCtx) *http.Request {},
+		OnResp: func(*http.Response, *goproxy.ProxyCtx) {},
+		Sess:   s,
+		status: false,
 		//tr:      &transport.Transport{Proxy: transport.ProxyFromEnvironment},
 
 		//History: make(map[int64]*model.HItem),
@@ -138,21 +138,23 @@ func (p *Coreproxy) onReqDef(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Requ
 	//p.History[ctx.Session] = &HItem{Req: r}
 	//p.History2 = append(p.History2, model.HItem{Method: r.Method})
 	//fmt.Println("Resp: ", p.Req)
-	p.OnReq(r, ctx)
+	r1, rsp := p.OnReq(r, ctx)
 
-	return r, nil
+	return r1, rsp
 }
 
 // Run when a response is received
 func (p *Coreproxy) onRespDef(r *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
-	// count the responses
-	p.Resp = p.Resp + 1
-	// save the response in the history
-	//mutex.Lock()
-	//defer mutex.Unlock()
-	//p.History[ctx.Session].Resp = r
-	//fmt.Println("Req: ", p.Resp)
-	p.OnResp(r, ctx)
+	if r != nil {
+		// count the responses
+		p.Resp = p.Resp + 1
+		// save the response in the history
+		//mutex.Lock()
+		//defer mutex.Unlock()
+		//p.History[ctx.Session].Resp = r
+		//fmt.Println("Req: ", p.Resp)
+		p.OnResp(r, ctx)
+	}
 
 	return r
 }
