@@ -19,125 +19,97 @@ import (
 )
 
 type CoreproxyController struct {
-	Proxy *Coreproxy
-	Gui   *CoreproxyGui
-	Sess  *core.Session
+	Module *Coreproxy
+	Gui    *CoreproxyGui
+	Sess   *core.Session
 
 	isRunning bool
 	model     *model.SortFilterModel
 	id        int
 
-	_ func() `signal:"mySignal"`
+	// interceptor
+	interceptor_status  bool
+	intercept_requests  bool
+	intercept_responses bool
+	forward_chan        chan bool
+	drop_chan           chan bool
+	// will maintain the number of requests in queue
+	requests_queue  int
+	responses_queue int
 
-	interceptor       bool
-	interceptRequests bool
-	interceptResponse bool
-	requestC          chan bool
-	nextRequestC      chan bool
-	requestC1         chan *http.Request
-	queue             int
-	forwardC          chan bool
-	interceptorC      chan bool
-	dropC             chan bool
+	// Qt signals
+	_ func() `signal:"mySignal"`
 }
 
 var mutex = &sync.Mutex{}
 
 func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Session) *CoreproxyController {
 	c := &CoreproxyController{
-		Proxy:             proxy,
-		Gui:               proxygui,
-		Sess:              s,
-		isRunning:         false,
-		id:                0,
-		interceptor:       false,
-		interceptRequests: false,
-		interceptResponse: false,
-		requestC:          make(chan bool),
-		nextRequestC:      make(chan bool),
-		requestC1:         make(chan *http.Request),
-		forwardC:          make(chan bool),
-		interceptorC:      make(chan bool),
-		dropC:             make(chan bool),
-		queue:             0,
+		Module:              proxy,
+		Gui:                 proxygui,
+		Sess:                s,
+		isRunning:           false,
+		id:                  0,
+		interceptor_status:  false,
+		intercept_requests:  true,
+		intercept_responses: true,
+		forward_chan:        make(chan bool),
+		drop_chan:           make(chan bool),
+		requests_queue:      0,
+		responses_queue:     0,
 	}
 
 	c.model = model.NewSortFilterModel(nil)
 
-	c.Proxy.OnReq = c.OnReq
-	c.Proxy.OnResp = c.OnResp
+	c.Module.OnReq = c.OnReq
+	c.Module.OnResp = c.OnResp
 
 	c.Gui.SetTableModel(c.model)
-	c.Gui.StartProxy = c.StartProxy
-	c.Gui.RowClicked = c.RowClicked
+	c.Gui.StartProxy = c.startProxy
+	c.Gui.RowClicked = c.selectRow
 	c.Gui.Toggle = c.interceptorToggle
 	c.Gui.Forward = c.forward
 	c.Gui.Drop = c.drop
 	return c
 }
 
-func (c *CoreproxyController) RowClicked(r int) {
+// buttons logic
+
+func (c *CoreproxyController) selectRow(r int) {
 	actual_row := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
 	// load the request in the request\response tab
 	req, resp := c.model.Custom.GetReqResp(actual_row - 1)
-	c.Gui.RequestText.SetPlainText(req.ToString())
-	c.Gui.ResponseText.SetPlainText(resp.ToString())
+	if req != nil {
+		c.Gui.RequestText.SetPlainText(req.ToString())
+	}
+	if resp != nil && resp.ContentLength >= 1e+8 {
+		c.Gui.ResponseText.SetPlainText("Response too big")
+	} else if resp != nil {
+		c.Gui.ResponseText.SetPlainText(resp.ToString())
+	}
 }
 
 func (c *CoreproxyController) interceptorToggle(b bool) {
-	if !c.interceptor {
-		c.interceptor = true
-		//go func() { c.nextRequestC <- true }()
+	if !c.interceptor_status {
+		c.interceptor_status = true
 	} else {
-		c.interceptor = false
-		if c.queue > 0 {
-			c.interceptorC <- true
+		c.interceptor_status = false
+		if c.requests_queue > 0 || c.responses_queue > 0 {
+			tmp := c.requests_queue + c.responses_queue
+			for i := 0; i < tmp; i++ {
+				//fmt.Printf("interceptor waiting: %d\n", tmp)
+				c.forward_chan <- true
+			}
 		}
 	}
-	c.Sess.Debug(c.Proxy.Name(), fmt.Sprintf("Interceptor is: %v", c.interceptor))
-}
-
-func (c *CoreproxyController) interceptorActions(req *http.Request, resp *http.Response) (*http.Request, *http.Response) {
-
-	select {
-	case <-c.forwardC:
-		// pressed forward
-		r := strings.NewReader(c.Gui.InterceptorEditor.ToPlainText())
-		buf := bufio.NewReader(r)
-
-		req, err := http.ReadRequest(buf)
-		if err != nil {
-			c.Sess.Err(c.Proxy.Name(), fmt.Sprintf("Error: %p", err))
-			return nil, nil
-		} else {
-			return req, nil
-		}
-	case <-c.interceptorC:
-		// pressed intercetor to turn it off
-		r := strings.NewReader(c.Gui.InterceptorEditor.ToPlainText())
-		buf := bufio.NewReader(r)
-
-		req, err := http.ReadRequest(buf)
-		if err != nil {
-			c.Sess.Err(c.Proxy.Name(), fmt.Sprintf("Error: %p", err))
-			return nil, nil
-		} else {
-			return req, nil
-		}
-	case <-c.dropC:
-		// pressed drop
-		return req, goproxy.NewResponse(req,
-			goproxy.ContentTypeText, http.StatusForbidden,
-			"Request droppped")
-	}
+	c.Sess.Debug(c.Module.Name(), fmt.Sprintf("Interceptor is: %v", c.interceptor_status))
 }
 
 func (c *CoreproxyController) forward(b bool) {
 	go func() {
 		// activate only if there's something waiting
-		if c.queue > 0 {
-			c.Sess.Debug(c.Proxy.Name(), "pressing forward")
-			c.forwardC <- true
+		if c.requests_queue > 0 || c.responses_queue > 0 {
+			c.forward_chan <- true
 		}
 	}()
 }
@@ -145,14 +117,13 @@ func (c *CoreproxyController) forward(b bool) {
 func (c *CoreproxyController) drop(b bool) {
 	go func() {
 		// activate only if there's something waiting
-		if c.queue > 0 {
-			c.Sess.Debug(c.Proxy.Name(), "pressing drop")
-			c.dropC <- true
+		if c.requests_queue > 0 || c.responses_queue > 0 {
+			c.drop_chan <- true
 		}
 	}()
 }
 
-func (c *CoreproxyController) StartProxy(b bool) {
+func (c *CoreproxyController) startProxy(b bool) {
 	if !c.isRunning {
 		// Start and stop the proxy
 		ip_port_regxp := "^((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)):(6553[0-5]|655[0-2][0-9]|65[0-4][0-9][0-9]|6[0-4][0-9][0-9][0-9]|[1-5]?[0-9]?[0-9]?[0-9]?[0-9])?$"
@@ -161,36 +132,39 @@ func (c *CoreproxyController) StartProxy(b bool) {
 
 		if s := r.FindStringSubmatch(c.Gui.ListenerLineEdit.DisplayText()); s != nil {
 			p, _ := strconv.Atoi(s[2])
-			if e := c.Proxy.ChangeIpPort(s[1], p); e == nil {
+			if e := c.Module.ChangeIpPort(s[1], p); e == nil {
 				// if I can change ip and port, change it also in the config struct
 				c.Sess.Config.Address = s[1]
 				c.Sess.Config.Port = p
 				go func() {
 					c.Gui.StartStopBtn.SetText("Stop")
 					c.isRunning = true
-					c.Sess.Info(c.Proxy.Name(), "Starting proxy ...")
-					if e := c.Proxy.Start(); e != nil && e != http.ErrServerClosed {
-						c.Sess.Err(c.Proxy.Name(), fmt.Sprintf("Error starting the proxy %s\n", e))
+					c.Sess.Info(c.Module.Name(), "Starting proxy ...")
+					if e := c.Module.Start(); e != nil && e != http.ErrServerClosed {
+						c.Sess.Err(c.Module.Name(), fmt.Sprintf("Error starting the proxy %s\n", e))
 						c.isRunning = false
 						c.Gui.StartStopBtn.SetText("Start")
 					}
 				}()
 			} else {
-				c.Sess.Err(c.Proxy.Name(), fmt.Sprintf("Error starting the proxy %s\n", e))
+				c.Sess.Err(c.Module.Name(), fmt.Sprintf("Error starting the proxy %s\n", e))
 			}
 		} else {
-			c.Sess.Err(c.Proxy.Name(), "Wrong input")
+			c.Sess.Err(c.Module.Name(), "Wrong input")
 		}
 	} else {
-		c.Proxy.Stop()
+		if c.interceptor_status {
+			c.interceptorToggle(false)
+		}
+		c.Module.Stop()
 		c.isRunning = false
-		c.Sess.Info(c.Proxy.Name(), "Stopping proxy.")
+		c.Sess.Info(c.Module.Name(), "Stopping proxy.")
 		c.Gui.StartStopBtn.SetText("Start")
 	}
 }
 
-func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) {
-	// activate the interceptor
+// Executed when a response arrives
+func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 
 	item := model.NewHItem(nil)
 	var bodyBytes []byte
@@ -199,13 +173,38 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) {
 		// Restore the io.ReadCloser to its original state
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
-	item.Resp = &model.Response{Status: r.Status, Body: bodyBytes, Proto: r.Proto, ContentLength: r.ContentLength, Headers: r.Header}
+	item.Resp = &model.Response{Status: r.Status, Body: bodyBytes, Proto: r.Proto, ContentLength: int64(len(bodyBytes)), Headers: r.Header}
+	// activate interceptor
+	if c.interceptor_status && c.intercept_responses {
+		// increase the requests in queue
+		//fmt.Printf("Responses waiting: %d\n", c.responses_queue)
+		c.responses_queue = c.responses_queue + 1
+		mutex.Lock()
+		// if response is bigger than 100mb, show message that is not supported
+		if r.ContentLength >= 1e+8 {
+			c.Gui.InterceptorEditor.SetPlainText("Response too big")
+		} else {
+			c.Gui.InterceptorEditor.SetPlainText(item.Resp.ToString())
+		}
+		// now wait until a decision is made
+		for r = c.interceptorResponseActions(nil, r); r == nil; r = c.interceptorResponseActions(nil, r) {
+			// doesn't look good but makes sence ... I guess
+			// continue to perform intercetorAction until I don't get nil as response
+		}
+		// decrease the requests in queue
+		c.responses_queue = c.responses_queue - 1
+		// rest the editor
+		c.Gui.InterceptorEditor.SetPlainText("")
+		mutex.Unlock()
+	}
 	// For whatever reason, I have to send a full HItem insteam of a Resp
 	c.model.Custom.EditItem(item, ctx.Session)
+
+	return r
 }
 
+// Executed when a request arrives
 func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-	c.queue = c.queue + 1
 	var resp *http.Response
 	var bodyBytes []byte
 	if r != nil {
@@ -219,29 +218,21 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 
 	// this is the original request, I save it before tampering with it
 	req.Req = &model.Request{Path: r.URL.Path, Schema: r.URL.Scheme, Method: r.Method, Body: bodyBytes, Host: r.Host, ContentLength: r.ContentLength, Headers: r.Header, Proto: r.Proto}
-	//c.model.Add()
 
 	// activate interceptor
-	if c.interceptor {
-		fmt.Printf("(1) waiting in queue %p\n", c.queue)
+	if c.interceptor_status && c.intercept_requests {
+		// increase the requests in queue
+		c.requests_queue = c.requests_queue + 1
 		mutex.Lock()
 		c.Gui.InterceptorEditor.SetPlainText(req.Req.ToString() + "\n")
 		// now wait until a decision is made
-		tmp_scheme := r.URL.Scheme
-		tmp_host := r.URL.Host
-		fmt.Printf("(2) waiting in queue %p\n", c.queue)
-		for r, resp = c.interceptorActions(r, nil); r == nil; r, resp = c.interceptorActions(r, nil) {
+		for r, resp = c.interceptorRequestActions(r, nil); r == nil; r, resp = c.interceptorRequestActions(r, nil) {
 			// doesn't look good but makes sence ... I guess
 			// continue to perform intercetorAction until I don't get nil as response
 		}
-		// reset scheme and host
-		fmt.Printf("host %p\n", tmp_host)
-		fmt.Printf("scheme %p\n", tmp_scheme)
-		fmt.Printf("r.URL %p\n", r.URL)
-		r.URL.Scheme = tmp_scheme
-		r.URL.Host = tmp_host
-		r.RequestURI = ""
-		c.queue = c.queue - 1
+		// decrease the requests in queue
+		c.requests_queue = c.requests_queue - 1
+		// rest the editor
 		c.Gui.InterceptorEditor.SetPlainText("")
 		mutex.Unlock()
 	}
@@ -249,4 +240,61 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 	// add the request to the history only at the end
 	c.model.Custom.AddItem(req, ctx.Session)
 	return r, resp
+}
+
+func (c *CoreproxyController) interceptorRequestActions(req *http.Request, resp *http.Response) (*http.Request, *http.Response) {
+
+	select {
+	case <-c.forward_chan:
+		if !c.interceptor_status {
+			return req, nil
+		}
+		// pressed forward
+		reader := strings.NewReader(c.Gui.InterceptorEditor.ToPlainText())
+		buf := bufio.NewReader(reader)
+
+		r, err := http.ReadRequest(buf)
+		if err != nil {
+			c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Req: %s", err.Error()))
+			return nil, nil
+		}
+		r.URL.Scheme = req.URL.Scheme
+		r.URL.Host = req.URL.Host
+		r.RequestURI = ""
+		return r, nil
+	case <-c.drop_chan:
+		// pressed drop
+		return req, goproxy.NewResponse(req,
+			goproxy.ContentTypeText, http.StatusForbidden, "Request droppped")
+	}
+}
+
+func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp *http.Response) *http.Response {
+
+	select {
+	case <-c.forward_chan:
+		if !c.interceptor_status {
+			return resp
+		}
+		// if response is bigger than 100mb, just don't process the text editor
+		if resp.ContentLength >= 1e+8 {
+			return resp
+		}
+		// pressed forward
+		reader := strings.NewReader(c.Gui.InterceptorEditor.ToPlainText())
+		buf := bufio.NewReader(reader)
+
+		resp, err := http.ReadResponse(buf, nil)
+		if err != nil {
+			//c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Resp: %s", err.Error()))
+			print(err)
+			return nil
+		} else {
+			return resp
+		}
+	case <-c.drop_chan:
+		// pressed drop
+		resp.Body = ioutil.NopCloser(bytes.NewReader([]byte("Response dropped by user")))
+		return resp
+	}
 }

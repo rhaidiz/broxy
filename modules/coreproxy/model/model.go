@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"sync"
 
 	"github.com/therecipe/qt/core"
@@ -30,7 +31,11 @@ func (r *Request) ToString() string {
 	if r == nil {
 		return ""
 	}
-	ret := fmt.Sprintf("%s %s %s\nHost: %s\n", r.Method, r.Path, r.Proto, r.Host)
+	path, err := url.Parse(r.Path)
+	if err != nil {
+		return "Url parser error"
+	}
+	ret := fmt.Sprintf("%s %s %s\nHost: %s\n", r.Method, path, r.Proto, r.Host)
 	for k, v := range r.Headers {
 		values := ""
 		for _, s := range v {
@@ -70,7 +75,7 @@ func (r *Response) ToString() string {
 		}
 		ret = ret + fmt.Sprintf("%s: %s\n", k, values)
 	}
-	ret = ret + fmt.Sprintf("Content-Length: %s\n", r.ContentLength)
+	ret = ret + fmt.Sprintf("Content-Length: %d\n", r.ContentLength)
 	if len(r.Body) > 0 {
 		ret = ret + fmt.Sprintf("\n%s", string(r.Body))
 	}

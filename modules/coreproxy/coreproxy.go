@@ -25,7 +25,7 @@ type Coreproxy struct {
 	Resp    int
 	Srv     *http.Server
 	OnReq   func(*http.Request, *goproxy.ProxyCtx) (*http.Request, *http.Response)
-	OnResp  func(*http.Response, *goproxy.ProxyCtx)
+	OnResp  func(*http.Response, *goproxy.ProxyCtx) *http.Response
 	status  bool
 	//tr      *transport.Transport
 	//History			map[int64]*model.HItem
@@ -45,7 +45,7 @@ func NewCoreProxy(s *core.Session) *Coreproxy {
 		Req:     0,
 		Resp:    0,
 		//OnReq:   func(*http.Request, *goproxy.ProxyCtx) *http.Request {},
-		OnResp: func(*http.Response, *goproxy.ProxyCtx) {},
+		//OnResp: func(*http.Response, *goproxy.ProxyCtx) {},
 		Sess:   s,
 		status: false,
 		//tr:      &transport.Transport{Proxy: transport.ProxyFromEnvironment},
@@ -153,7 +153,7 @@ func (p *Coreproxy) onRespDef(r *http.Response, ctx *goproxy.ProxyCtx) *http.Res
 		//defer mutex.Unlock()
 		//p.History[ctx.Session].Resp = r
 		//fmt.Println("Req: ", p.Resp)
-		p.OnResp(r, ctx)
+		r = p.OnResp(r, ctx)
 	}
 
 	return r

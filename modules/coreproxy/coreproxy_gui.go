@@ -80,8 +80,6 @@ func (t *TableBridge) setParent(p *CoreproxyGui) {
 func (t *TableBridge) clicked(r int) {
 	if t.coreGui != nil {
 		t.coreGui.RowClicked(r)
-	} else {
-		println("nil")
 	}
 }
 
