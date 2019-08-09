@@ -1,3 +1,3 @@
 # Broxy
 
-An intercept proxy written in Go.
+An interceptor proxy written in Go.
