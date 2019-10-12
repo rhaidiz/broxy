@@ -82,7 +82,7 @@ func (r *Response) ToString() string {
 	return ret
 }
 
-type HItem struct {
+type HttpItem struct {
 	core.QObject
 	ID   int
 	Req  *Request
@@ -97,7 +97,7 @@ const (
 	Status
 )
 
-func (m *CustomTableModel) row(i *HItem) int {
+func (m *CustomTableModel) row(i *HttpItem) int {
 	for index, item := range m.modelData {
 		if item.Pointer() == i.Pointer() {
 			return index
@@ -121,16 +121,16 @@ type CustomTableModel struct {
 	core.QAbstractTableModel
 	_ func() `constructor:"init"`
 
-	modelData []HItem
-	hashMap   map[int64]*HItem
+	modelData []HttpItem
+	hashMap   map[int64]*HttpItem
 
-	_ func(item *HItem, i int64) `signal:"addItem,auto"`
-	_ func(item *HItem, i int64) `signal:editItem,auto"`
+	_ func(item *HttpItem, i int64) `signal:"addItem,auto"`
+	_ func(item *HttpItem, i int64) `signal:editItem,auto"`
 }
 
 var mutex = &sync.Mutex{}
 
-//func (m *CustomTableModel) GetIndex(i int) *HItem {
+//func (m *CustomTableModel) GetIndex(i int) *HttpItem {
 //	return &m.modelData[i]
 //}
 
@@ -139,8 +139,8 @@ func init() {
 }
 
 func (m *CustomTableModel) init() {
-	m.modelData = []HItem{}
-	m.hashMap = make(map[int64]*HItem)
+	m.modelData = []HttpItem{}
+	m.hashMap = make(map[int64]*HttpItem)
 
 	m.ConnectRoleNames(m.roleNames)
 	//m.ConnectHeaderData(m.headerData)
@@ -158,10 +158,10 @@ func (m *CustomTableModel) AddReq(r *http.Request, i int64) {
 	defer mutex.Unlock()
 
 	// save the request and its body
-	//m.hashMap[i] = HItem{Req: r, ReqBody: bodyBytes}
+	//m.hashMap[i] = HttpItem{Req: r, ReqBody: bodyBytes}
 }
 
-func (m *CustomTableModel) addItem(item *HItem, i int64) {
+func (m *CustomTableModel) addItem(item *HttpItem, i int64) {
 	mutex.Lock()
 	defer mutex.Unlock()
 	m.BeginInsertRows(core.NewQModelIndex(), len(m.modelData), len(m.modelData))
@@ -170,7 +170,7 @@ func (m *CustomTableModel) addItem(item *HItem, i int64) {
 	m.EndInsertRows()
 }
 
-func (m *CustomTableModel) editItem(item *HItem, i int64) {
+func (m *CustomTableModel) editItem(item *HttpItem, i int64) {
 	mutex.Lock()
 	defer mutex.Unlock()
 

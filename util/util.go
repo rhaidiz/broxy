@@ -37,7 +37,8 @@ func ResponseToString(r *http.Response) string {
 		}
 		ret = ret + fmt.Sprintf("%s: %s\n", k, values)
 	}
-	ret = ret + fmt.Sprintf("Content-Length: %s\n", r.ContentLength)
+	ret = ret + fmt.Sprintf("Content-Length: %v\n", r.ContentLength)
+	print(r.ContentLength)
 	var bodyBytes []byte
 	bodyBytes, _ = ioutil.ReadAll(r.Body)
 

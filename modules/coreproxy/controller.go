@@ -166,14 +166,15 @@ func (c *CoreproxyController) startProxy(b bool) {
 // Executed when a response arrives
 func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 
-	item := model.NewHItem(nil)
+	http_item := model.NewHttpItem(nil)
+
 	var bodyBytes []byte
 	if r != nil {
 		bodyBytes, _ = ioutil.ReadAll(r.Body)
 		// Restore the io.ReadCloser to its original state
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
-	item.Resp = &model.Response{Status: r.Status, Body: bodyBytes, Proto: r.Proto, ContentLength: int64(len(bodyBytes)), Headers: r.Header}
+	http_item.Resp = &model.Response{Status: r.Status, Body: bodyBytes, Proto: r.Proto, ContentLength: int64(len(bodyBytes)), Headers: r.Header}
 	// activate interceptor
 	if c.interceptor_status && c.intercept_responses {
 		// increase the requests in queue
@@ -185,7 +186,7 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 		if r.ContentLength >= 1e+8 {
 			c.Gui.InterceptorEditor.SetPlainText("Response too big")
 		} else {
-			c.Gui.InterceptorEditor.SetPlainText(item.Resp.ToString())
+			c.Gui.InterceptorEditor.SetPlainText(http_item.Resp.ToString())
 		}
 		// now wait until a decision is made
 		for r = c.interceptorResponseActions(nil, r); r == nil; r = c.interceptorResponseActions(nil, r) {
@@ -198,8 +199,8 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 		c.Gui.InterceptorEditor.SetPlainText("")
 		mutex.Unlock()
 	}
-	// For whatever reason, I have to send a full HItem insteam of a Resp
-	c.model.Custom.EditItem(item, ctx.Session)
+	// FIXME: For whatever reason, I have to use a full HttpItem insteam of a Resp
+	c.model.Custom.EditItem(http_item, ctx.Session)
 
 	return r
 }
@@ -213,7 +214,7 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 		// Restore the io.ReadCloser to its original state
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
-	req := model.NewHItem(nil)
+	req := model.NewHttpItem(nil)
 	c.id = c.id + 1
 	req.ID = c.id
 
