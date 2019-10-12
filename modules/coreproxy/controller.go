@@ -178,6 +178,7 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 	if c.interceptor_status && c.intercept_responses {
 		// increase the requests in queue
 		//fmt.Printf("Responses waiting: %d\n", c.responses_queue)
+		//fmt.Printf("%s", bodyBytes)
 		c.responses_queue = c.responses_queue + 1
 		mutex.Lock()
 		// if response is bigger than 100mb, show message that is not supported
@@ -276,18 +277,24 @@ func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp
 		if !c.interceptor_status {
 			return resp
 		}
-		// if response is bigger than 100mb, just don't process the text editor
+		// if response is bigger than 100mb, ignore the content of the QPlainTextEditor
 		if resp.ContentLength >= 1e+8 {
 			return resp
 		}
+		// FIXME: images cannot be tampered. I show them in case the user wants to drop, but cannot be tampered
+		// because the QPlaintTextEditor only supports utf-8 character encoding
+		if strings.HasPrefix(resp.Header["Content-Type"][0], "image") {
+			return resp
+		}
+
 		// pressed forward
 		reader := strings.NewReader(c.Gui.InterceptorEditor.ToPlainText())
 		buf := bufio.NewReader(reader)
 
 		resp, err := http.ReadResponse(buf, nil)
+
 		if err != nil {
-			//c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Resp: %s", err.Error()))
-			print(err)
+			print(fmt.Sprintf("Forward Resp: %s", err.Error()))
 			return nil
 		} else {
 			return resp
