@@ -93,10 +93,13 @@ type HttpItem struct {
 
 const (
 	ID = int(core.Qt__UserRole) + 1<<iota
+	Host
 	Method
 	Path
-	Schema
+	Params
+	Edit
 	Status
+	Length
 )
 
 func (m *CustomTableModel) row(i *HttpItem) int {
@@ -111,10 +114,13 @@ func (m *CustomTableModel) row(i *HttpItem) int {
 func (m *CustomTableModel) roleNames() map[int]*core.QByteArray {
 	return map[int]*core.QByteArray{
 		ID:     core.NewQByteArray2("ID", -1),
+		Host:   core.NewQByteArray2("Host", -1),
 		Method: core.NewQByteArray2("Method", -1),
 		Path:   core.NewQByteArray2("Path", -1),
-		Schema: core.NewQByteArray2("Schema", -1),
+		Params: core.NewQByteArray2("Params", -1),
+		Edit:   core.NewQByteArray2("Edit", -1),
 		Status: core.NewQByteArray2("Status", -1),
+		Length: core.NewQByteArray2("Length", -1),
 		//LastName:  core.NewQByteArray2("LastName", -1),
 	}
 }
@@ -184,7 +190,7 @@ func (m *CustomTableModel) editItem(item *HttpItem, i int64) {
 	m.modelData[row].Resp = item.Resp
 	m.modelData[row].EditedResp = item.EditedResp
 
-	m.DataChanged(m.Index(row, 3, core.NewQModelIndex()), m.Index(row, 3, core.NewQModelIndex()), []int{Method, Path, Schema, Status})
+	m.DataChanged(m.Index(row, 2, core.NewQModelIndex()), m.Index(row, 2, core.NewQModelIndex()), []int{Edit, Status, Length})
 }
 
 func (m *CustomTableModel) rowCount(*core.QModelIndex) int {
@@ -199,15 +205,29 @@ func (m *CustomTableModel) data(index *core.QModelIndex, role int) *core.QVarian
 	switch role {
 	case ID:
 		return core.NewQVariant7(item.ID)
+	case Host:
+		return core.NewQVariant14(item.Req.Host)
 	case Method:
 		return core.NewQVariant14(item.Req.Method)
 	case Path:
 		return core.NewQVariant14(item.Req.Path)
-	case Schema:
-		return core.NewQVariant14(item.Req.Schema)
+	case Params:
+		if false {
+			return core.NewQVariant14("✓")
+		}
+		return core.NewQVariant14("")
+	case Edit:
+		if item.EditedReq != nil || item.EditedResp != nil {
+			return core.NewQVariant14("✓")
+		}
+		return core.NewQVariant14("")
 	case Status:
 		if item.Resp != nil {
 			return core.NewQVariant14(item.Resp.Status)
+		}
+	case Length:
+		if item.Resp != nil {
+			return core.NewQVariant14(fmt.Sprintf("%d", item.Resp.ContentLength))
 		}
 	}
 	return core.NewQVariant()

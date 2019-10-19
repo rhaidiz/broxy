@@ -51,24 +51,42 @@ Item {
 				TableViewColumn {
 					role: "ID"
 					title: role
+					width: 40
+				}
+				TableViewColumn {
+					role: "Host"
+					title: role
 				}
 	
 				TableViewColumn {
 					role: "Method"
 					title: role
+					width: 80
 				}
-				TableViewColumn {
-					role: "Schema"
-					title: role
-				}
-	
 				TableViewColumn {
 					role: "Path"
 					title: role
 				}
+	
+				TableViewColumn {
+					role: "Params"
+					title: role
+					width: 60
+				}
+				TableViewColumn {
+					role: "Edit"
+					title: role
+					width: 60
+				}
 				TableViewColumn {
 					role: "Status"
 					title: role
+					width: 100
+				}
+				TableViewColumn {
+					role: "Length"
+					title: role
+					width: 80
 				}
 			}
 	
