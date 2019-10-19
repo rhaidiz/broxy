@@ -27,12 +27,14 @@ type CoreproxyGui struct {
 
 	//_ func() `signal:"test,auto"`
 	// history tab
-	splitter     *widgets.QSplitter
-	historyTable *widgets.QTreeView
-	tableBridge  *TableBridge
-	reqRespTab   *widgets.QTabWidget
-	RequestText  *widgets.QPlainTextEdit
-	ResponseText *widgets.QPlainTextEdit
+	splitter           *widgets.QSplitter
+	historyTable       *widgets.QTreeView
+	tableBridge        *TableBridge
+	reqRespTab         *widgets.QTabWidget
+	RequestText        *widgets.QPlainTextEdit
+	EditedRequestText  *widgets.QPlainTextEdit
+	ResponseText       *widgets.QPlainTextEdit
+	EditedResponseText *widgets.QPlainTextEdit
 
 	coreProxyGui *widgets.QTabWidget
 
@@ -181,6 +183,33 @@ func (g *CoreproxyGui) SetTableModel(m *model.SortFilterModel) {
 	g.view.RootContext().SetContextProperty("tableBridge", g.tableBridge)
 }
 
+func (g *CoreproxyGui) HideAllTabs() {
+	for i := g.reqRespTab.Count(); i != 0; i-- {
+		g.reqRespTab.RemoveTab(i)
+	}
+}
+
+func (g *CoreproxyGui) ShowReqTab(req string) {
+	g.reqRespTab.AddTab(g.RequestText, "Request")
+	g.RequestText.SetPlainText(req)
+}
+
+func (g *CoreproxyGui) ShowEditedReqTab(edited_req string) {
+	g.reqRespTab.AddTab(g.EditedRequestText, "Edited Request")
+	g.EditedRequestText.SetPlainText(edited_req)
+
+}
+
+func (g *CoreproxyGui) ShowRespTab(resp string) {
+	g.reqRespTab.AddTab(g.ResponseText, "Response")
+	g.ResponseText.SetPlainText(resp)
+}
+
+func (g *CoreproxyGui) ShowEditedRespTab(edited_resp string) {
+	g.reqRespTab.AddTab(g.EditedResponseText, "Edited Response")
+	g.EditedResponseText.SetPlainText(edited_resp)
+}
+
 func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
 	g.coreProxyGui = widgets.NewQTabWidget(nil)
 	g.coreProxyGui.SetDocumentMode(true)
@@ -197,8 +226,13 @@ func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
 	g.RequestText.SetReadOnly(true)
 	g.ResponseText = widgets.NewQPlainTextEdit(nil)
 	g.ResponseText.SetReadOnly(true)
-	g.reqRespTab.AddTab(g.RequestText, "Request")
-	g.reqRespTab.AddTab(g.ResponseText, "Response")
+	g.EditedRequestText = widgets.NewQPlainTextEdit(nil)
+	g.EditedRequestText.SetReadOnly(true)
+	g.EditedResponseText = widgets.NewQPlainTextEdit(nil)
+	g.EditedResponseText.SetReadOnly(true)
+	//g.reqRespTab.AddTab(g.RequestText, "Request")
+	//g.reqRespTab.AddTab(g.EditedRequestText, "Edited Request")
+	//g.reqRespTab.AddTab(g.ResponseText, "Response")
 
 	// the splitter for tab history
 	g.splitter = widgets.NewQSplitter(nil)

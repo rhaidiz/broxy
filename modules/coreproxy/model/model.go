@@ -84,9 +84,11 @@ func (r *Response) ToString() string {
 
 type HttpItem struct {
 	core.QObject
-	ID   int
-	Req  *Request
-	Resp *Response
+	ID         int
+	Req        *Request
+	Resp       *Response
+	EditedReq  *Request
+	EditedResp *Response
 }
 
 const (
@@ -149,8 +151,8 @@ func (m *CustomTableModel) init() {
 	m.ConnectData(m.data)
 }
 
-func (m *CustomTableModel) GetReqResp(i int) (*Request, *Response) {
-	return m.modelData[i].Req, m.modelData[i].Resp
+func (m *CustomTableModel) GetReqResp(i int) (*Request, *Request, *Response, *Response) {
+	return m.modelData[i].Req, m.modelData[i].EditedReq, m.modelData[i].Resp, m.modelData[i].EditedResp
 }
 
 func (m *CustomTableModel) AddReq(r *http.Request, i int64) {
@@ -177,7 +179,11 @@ func (m *CustomTableModel) editItem(item *HttpItem, i int64) {
 	row := m.row(m.hashMap[i])
 
 	m.hashMap[i].Resp = item.Resp
+	m.hashMap[i].EditedResp = item.EditedResp
+
 	m.modelData[row].Resp = item.Resp
+	m.modelData[row].EditedResp = item.EditedResp
+
 	m.DataChanged(m.Index(row, 3, core.NewQModelIndex()), m.Index(row, 3, core.NewQModelIndex()), []int{Method, Path, Schema, Status})
 }
 

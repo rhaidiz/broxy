@@ -14,6 +14,7 @@ import (
 	"github.com/elazarl/goproxy"
 	"github.com/rhaidiz/broxy/core"
 	"github.com/rhaidiz/broxy/modules/coreproxy/model"
+	"github.com/rhaidiz/broxy/util"
 	qtcore "github.com/therecipe/qt/core"
 	"io/ioutil"
 )
@@ -36,9 +37,6 @@ type CoreproxyController struct {
 	// will maintain the number of requests in queue
 	requests_queue  int
 	responses_queue int
-
-	// Qt signals
-	_ func() `signal:"mySignal"`
 }
 
 var mutex = &sync.Mutex{}
@@ -76,16 +74,20 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 // buttons logic
 
 func (c *CoreproxyController) selectRow(r int) {
+	c.Gui.HideAllTabs()
 	actual_row := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
-	// load the request in the request\response tab
-	req, resp := c.model.Custom.GetReqResp(actual_row - 1)
+	req, edited_req, resp, edited_resp := c.model.Custom.GetReqResp(actual_row - 1)
 	if req != nil {
-		c.Gui.RequestText.SetPlainText(req.ToString())
+		c.Gui.ShowReqTab(req.ToString())
 	}
-	if resp != nil && resp.ContentLength >= 1e+8 {
-		c.Gui.ResponseText.SetPlainText("Response too big")
-	} else if resp != nil {
-		c.Gui.ResponseText.SetPlainText(resp.ToString())
+	if edited_req != nil {
+		c.Gui.ShowEditedReqTab(edited_req.ToString())
+	}
+	if resp != nil {
+		c.Gui.ShowRespTab(resp.ToString())
+	}
+	if edited_resp != nil {
+		c.Gui.ShowEditedRespTab(edited_resp.ToString())
 	}
 }
 
@@ -174,22 +176,26 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 		// Restore the io.ReadCloser to its original state
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
-	http_item.Resp = &model.Response{Status: r.Status, Body: bodyBytes, Proto: r.Proto, ContentLength: int64(len(bodyBytes)), Headers: r.Header}
+	http_item.Resp = &model.Response{Status: r.Status,
+		Body:          bodyBytes,
+		Proto:         r.Proto,
+		ContentLength: int64(len(bodyBytes)),
+		Headers:       r.Header,
+	}
 	// activate interceptor
+	var edited_resp *http.Response
 	if c.interceptor_status && c.intercept_responses {
 		// increase the requests in queue
-		//fmt.Printf("Responses waiting: %d\n", c.responses_queue)
-		//fmt.Printf("%s", bodyBytes)
 		c.responses_queue = c.responses_queue + 1
 		mutex.Lock()
-		// if response is bigger than 100mb, show message that is not supported
-		if r.ContentLength >= 1e+8 {
+		// if response is bigger than 100mb, show message that is too big
+		if http_item.Resp.ContentLength >= 1e+8 {
 			c.Gui.InterceptorEditor.SetPlainText("Response too big")
 		} else {
-			c.Gui.InterceptorEditor.SetPlainText(http_item.Resp.ToString())
+			c.Gui.InterceptorEditor.SetPlainText(http_item.Resp.ToString() + "\n")
 		}
 		// now wait until a decision is made
-		for r = c.interceptorResponseActions(nil, r); r == nil; r = c.interceptorResponseActions(nil, r) {
+		for edited_resp = c.interceptorResponseActions(nil, r); edited_resp == nil; edited_resp = c.interceptorResponseActions(nil, r) {
 			// doesn't look good but makes sence ... I guess
 			// continue to perform intercetorAction until I don't get nil as response
 		}
@@ -199,6 +205,22 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 		c.Gui.InterceptorEditor.SetPlainText("")
 		mutex.Unlock()
 	}
+
+	if edited_resp != nil && !util.ResponsesEquals(r, edited_resp) {
+
+		var edited_bodyBytes []byte
+		edited_bodyBytes, _ = ioutil.ReadAll(edited_resp.Body)
+		edited_resp.Body = ioutil.NopCloser(bytes.NewBuffer(edited_bodyBytes))
+		http_item.EditedResp = &model.Response{
+			Status:        edited_resp.Status,
+			Proto:         edited_resp.Proto,
+			Body:          edited_bodyBytes,
+			ContentLength: int64(len(edited_bodyBytes)),
+			Headers:       edited_resp.Header,
+		}
+		r = edited_resp
+	}
+
 	// FIXME: For whatever reason, I have to use a full HttpItem insteam of a Resp
 	c.model.Custom.EditItem(http_item, ctx.Session)
 
@@ -218,9 +240,19 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 	c.id = c.id + 1
 	req.ID = c.id
 
-	// this is the original request, I save it before tampering with it
-	req.Req = &model.Request{Path: r.URL.Path, Schema: r.URL.Scheme, Method: r.Method, Body: bodyBytes, Host: r.Host, ContentLength: r.ContentLength, Headers: r.Header, Proto: r.Proto}
+	// this is the original request, save it for the history
+	req.Req = &model.Request{
+		Path:          r.URL.Path,
+		Schema:        r.URL.Scheme,
+		Method:        r.Method,
+		Body:          bodyBytes,
+		Host:          r.Host,
+		ContentLength: r.ContentLength,
+		Headers:       r.Header,
+		Proto:         r.Proto,
+	}
 
+	var edited_req *http.Request
 	// activate interceptor
 	if c.interceptor_status && c.intercept_requests {
 		// increase the requests in queue
@@ -228,7 +260,7 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 		mutex.Lock()
 		c.Gui.InterceptorEditor.SetPlainText(req.Req.ToString() + "\n")
 		// now wait until a decision is made
-		for r, resp = c.interceptorRequestActions(r, nil); r == nil; r, resp = c.interceptorRequestActions(r, nil) {
+		for edited_req, resp = c.interceptorRequestActions(r, nil); edited_req == nil; edited_req, resp = c.interceptorRequestActions(r, nil) {
 			// doesn't look good but makes sence ... I guess
 			// continue to perform intercetorAction until I don't get nil as response
 		}
@@ -239,19 +271,38 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 		mutex.Unlock()
 	}
 
+	if edited_req != nil && !util.RequestsEquals(r, edited_req) {
+
+		var edited_bodyBytes []byte
+		edited_bodyBytes, _ = ioutil.ReadAll(edited_req.Body)
+		edited_req.Body = ioutil.NopCloser(bytes.NewBuffer(edited_bodyBytes))
+		req.EditedReq = &model.Request{
+			Path:          edited_req.URL.Path,
+			Schema:        edited_req.URL.Scheme,
+			Method:        edited_req.Method,
+			Body:          edited_bodyBytes,
+			Host:          edited_req.Host,
+			ContentLength: edited_req.ContentLength,
+			Headers:       edited_req.Header,
+			Proto:         edited_req.Proto,
+		}
+		r = edited_req
+	}
+
 	// add the request to the history only at the end
 	c.model.Custom.AddItem(req, ctx.Session)
+
 	return r, resp
 }
 
 func (c *CoreproxyController) interceptorRequestActions(req *http.Request, resp *http.Response) (*http.Request, *http.Response) {
 
 	select {
+	// pressed forward
 	case <-c.forward_chan:
 		if !c.interceptor_status {
 			return req, nil
 		}
-		// pressed forward
 		reader := strings.NewReader(c.Gui.InterceptorEditor.ToPlainText())
 		buf := bufio.NewReader(reader)
 
@@ -264,8 +315,8 @@ func (c *CoreproxyController) interceptorRequestActions(req *http.Request, resp 
 		r.URL.Host = req.URL.Host
 		r.RequestURI = ""
 		return r, nil
+	// pressed drop
 	case <-c.drop_chan:
-		// pressed drop
 		return req, goproxy.NewResponse(req,
 			goproxy.ContentTypeText, http.StatusForbidden, "Request droppped")
 	}
@@ -284,18 +335,23 @@ func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp
 		}
 		// FIXME: images cannot be tampered. I show them in case the user wants to drop, but cannot be tampered
 		// because the QPlaintTextEditor only supports utf-8 character encoding
-		if strings.HasPrefix(resp.Header["Content-Type"][0], "image") {
+		if _, ok := resp.Header["Content-Type"]; ok && strings.HasPrefix(resp.Header["Content-Type"][0], "image") {
 			return resp
 		}
 
 		// pressed forward
-		reader := strings.NewReader(c.Gui.InterceptorEditor.ToPlainText())
+		// remove "Content-Length" so that the ReadResponse will compute the right ContentLength
+
+		var re = regexp.MustCompile(`(Content-Length: \d+)`)
+		s := re.ReplaceAllString(c.Gui.InterceptorEditor.ToPlainText(), "")
+
+		reader := strings.NewReader(s)
 		buf := bufio.NewReader(reader)
 
 		resp, err := http.ReadResponse(buf, nil)
 
 		if err != nil {
-			print(fmt.Sprintf("Forward Resp: %s", err.Error()))
+			c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Resp: %s", err.Error()))
 			return nil
 		} else {
 			return resp
