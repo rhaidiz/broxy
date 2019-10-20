@@ -15,7 +15,12 @@ type Repeater struct {
 }
 
 func NewRepeater(s *core.Session) *Repeater {
-	return &Repeater{Sess: s, client: &http.Client{}}
+	return &Repeater{Sess: s, client: &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	},
+	}
 }
 
 func (r *Repeater) Name() string {
