@@ -308,7 +308,7 @@ func (c *CoreproxyController) interceptorRequestActions(req *http.Request, resp 
 		if !c.interceptor_status {
 			return req, nil
 		}
-		reader := strings.NewReader(c.Gui.InterceptorEditor.ToPlainText())
+		reader := strings.NewReader(util.NormalizeRequest(c.Gui.InterceptorEditor.ToPlainText()))
 		buf := bufio.NewReader(reader)
 
 		r, err := http.ReadRequest(buf)
