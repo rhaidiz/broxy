@@ -28,15 +28,19 @@ func RequestsEquals(r1 *http.Request, r2 *http.Request) bool {
 
 func ResponsesEquals(r1 *http.Response, r2 *http.Response) bool {
 	if r1 == nil || r2 == nil {
+		fmt.Println("fail1")
 		return false
 	}
 	if r1.Status != r2.Status || r1.StatusCode != r2.StatusCode || r1.Proto != r2.Proto {
+		fmt.Println("fail2")
 		return false
 	}
 	if !reflect.DeepEqual(r1.Header, r2.Header) {
+		fmt.Println("fail3")
 		return false
 	}
 
+	fmt.Println("fail4")
 	return bodyEquals(&r1.Body, &r2.Body)
 }
 
@@ -90,6 +94,7 @@ func RequestToString(r *http.Request) string {
 		ret = ret + fmt.Sprintf("%s: %s\n", k, values)
 	}
 	bodyBytes, _ := ioutil.ReadAll(r.Body)
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	if len(bodyBytes) > 0 {
 		ret = ret + fmt.Sprintf("\n%s", string(bodyBytes))
 	}
@@ -110,8 +115,8 @@ func ResponseToString(r *http.Response) string {
 	}
 	ret = ret + fmt.Sprintf("Content-Length: %v\n", r.ContentLength)
 	print(r.ContentLength)
-	var bodyBytes []byte
-	bodyBytes, _ = ioutil.ReadAll(r.Body)
+	bodyBytes, _ := ioutil.ReadAll(r.Body)
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 
 	if len(bodyBytes) > 0 {
 		ret = ret + fmt.Sprintf("\n%s", string(bodyBytes))

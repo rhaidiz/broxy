@@ -183,7 +183,6 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 		Headers:       r.Header,
 	}
 	// activate interceptor
-	var edited_resp *http.Response
 	if c.interceptor_status && c.intercept_responses {
 		//TODO: [IMPROVEMENT] change this code like this:
 		// move everythign in a single method related to intercept
@@ -191,40 +190,22 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 		// return response
 		// if the response is nil, it means the interceptor did not change the response
 
-		// increase the requests in queue
-		c.responses_queue = c.responses_queue + 1
-		mutex.Lock()
-		// if response is bigger than 100mb, show message that is too big
-		if http_item.Resp.ContentLength >= 1e+8 {
-			c.Gui.InterceptorEditor.SetPlainText("Response too big")
-		} else {
-			c.Gui.InterceptorEditor.SetPlainText(http_item.Resp.ToString() + "\n")
+		r.ContentLength = int64(len(bodyBytes))
+		edited_resp := c.interceptorResponseActions(nil, r)
+		// the response was edited
+		if edited_resp != nil {
+			var edited_bodyBytes []byte
+			edited_bodyBytes, _ = ioutil.ReadAll(edited_resp.Body)
+			edited_resp.Body = ioutil.NopCloser(bytes.NewBuffer(edited_bodyBytes))
+			http_item.EditedResp = &model.Response{
+				Status:        edited_resp.Status,
+				Proto:         edited_resp.Proto,
+				Body:          edited_bodyBytes,
+				ContentLength: int64(len(edited_bodyBytes)),
+				Headers:       edited_resp.Header,
+			}
+			r = edited_resp
 		}
-		// now wait until a decision is made
-		for edited_resp = c.interceptorResponseActions(nil, r); edited_resp == nil; edited_resp = c.interceptorResponseActions(nil, r) {
-			// doesn't look good but makes sence ... I guess
-			// continue to perform intercetorAction until I don't get nil as response
-		}
-		// decrease the requests in queue
-		c.responses_queue = c.responses_queue - 1
-		// rest the editor
-		c.Gui.InterceptorEditor.SetPlainText("")
-		mutex.Unlock()
-	}
-
-	if edited_resp != nil && !util.ResponsesEquals(r, edited_resp) {
-
-		var edited_bodyBytes []byte
-		edited_bodyBytes, _ = ioutil.ReadAll(edited_resp.Body)
-		edited_resp.Body = ioutil.NopCloser(bytes.NewBuffer(edited_bodyBytes))
-		http_item.EditedResp = &model.Response{
-			Status:        edited_resp.Status,
-			Proto:         edited_resp.Proto,
-			Body:          edited_bodyBytes,
-			ContentLength: int64(len(edited_bodyBytes)),
-			Headers:       edited_resp.Header,
-		}
-		r = edited_resp
 	}
 
 	// TODO: [BUG] For whatever reason, I have to use a full HttpItem insteam of a Resp
@@ -335,41 +316,71 @@ func (c *CoreproxyController) interceptorRequestActions(req *http.Request, resp 
 
 func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp *http.Response) *http.Response {
 
-	select {
-	case <-c.forward_chan:
-		if !c.interceptor_status {
-			return resp
-		}
-		// if response is bigger than 100mb, ignore the content of the QPlainTextEditor
-		if resp.ContentLength >= 1e+8 {
-			return resp
-		}
-		// FIXME: images cannot be tampered. I show them in case the user wants to drop, but cannot be tampered
-		// because the QPlaintTextEditor only supports utf-8 character encoding
-		if _, ok := resp.Header["Content-Type"]; ok && strings.HasPrefix(resp.Header["Content-Type"][0], "image") {
-			return resp
-		}
+	var _resp *http.Response
 
-		// pressed forward
-		// remove "Content-Length" so that the ReadResponse will compute the right ContentLength
-
-		var re = regexp.MustCompile(`(Content-Length: \d+)\n`)
-		s := re.ReplaceAllString(c.Gui.InterceptorEditor.ToPlainText(), "")
-
-		reader := strings.NewReader(s)
-		buf := bufio.NewReader(reader)
-
-		resp, err := http.ReadResponse(buf, nil)
-
-		if err != nil {
-			c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Resp: %s", err.Error()))
-			return nil
-		} else {
-			return resp
-		}
-	case <-c.drop_chan:
-		// pressed drop
-		resp.Body = ioutil.NopCloser(bytes.NewReader([]byte("Response dropped by user")))
-		return resp
+	// increase the requests in queue
+	c.responses_queue = c.responses_queue + 1
+	mutex.Lock()
+	// if response is bigger than 100mb, show message that is too big
+	if resp.ContentLength >= 1e+8 {
+		c.Gui.InterceptorEditor.SetPlainText("Response too big")
+	} else {
+		c.Gui.InterceptorEditor.SetPlainText(util.ResponseToString(resp))
 	}
+	for {
+		parse_error := false
+		select {
+		case <-c.forward_chan:
+			if !c.interceptor_status {
+				_resp = resp
+			}
+			// if response is bigger than 100mb, ignore the content of the QPlainTextEditor
+			if resp.ContentLength >= 1e+8 {
+				_resp = resp
+			}
+			// FIXME: images cannot be tampered. I show them in case the user wants to drop, but cannot be tampered
+			// because the QPlaintTextEditor only supports utf-8 character encoding
+			if _, ok := resp.Header["Content-Type"]; ok && strings.HasPrefix(resp.Header["Content-Type"][0], "image") {
+				_resp = resp
+			}
+
+			// pressed forward
+			// remove "Content-Length" so that the ReadResponse will compute the right ContentLength
+
+			var re = regexp.MustCompile(`(Content-Length: \d+)\n`)
+			s := re.ReplaceAllString(c.Gui.InterceptorEditor.ToPlainText(), "")
+
+			reader := strings.NewReader(s)
+			buf := bufio.NewReader(reader)
+
+			tmp, err := http.ReadResponse(buf, nil)
+			// so bad, fix me
+			_resp = tmp
+
+			if err != nil {
+				c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Resp: %s", err.Error()))
+				parse_error = true
+			} else {
+				if util.ResponsesEquals(resp, _resp) {
+					// response not edited
+					_resp = nil
+				}
+			}
+		case <-c.drop_chan:
+			// pressed drop
+			resp.Body = ioutil.NopCloser(bytes.NewReader([]byte("Response dropped by user")))
+			_resp = resp
+		}
+		if !parse_error {
+			break
+		}
+	}
+
+	// decrease the requests in queue
+	c.responses_queue = c.responses_queue - 1
+	// rest the editor
+	c.Gui.InterceptorEditor.SetPlainText("")
+	mutex.Unlock()
+
+	return _resp
 }
