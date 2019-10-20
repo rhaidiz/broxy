@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
+	"regexp"
+	"strings"
 )
 
 func RequestsEquals(r1 *http.Request, r2 *http.Request) bool {
@@ -52,6 +54,24 @@ func bodyEquals(r1 *io.ReadCloser, r2 *io.ReadCloser) bool {
 	body2 := string(bodyBytes2)
 
 	return body1 == body2
+}
+
+func NormalizeRequest(raw_req string) string {
+	a := regexp.MustCompile(`\n\n`)
+	s := a.Split(raw_req, 2)
+	if len(s) == 2 {
+		c_l := len(s[1])
+		h := strings.Split(s[0], "\n")
+		new_header := ""
+		for _, v := range h {
+			if !strings.HasPrefix(v, "Content-Length") {
+				new_header = new_header + v + "\n"
+			}
+		}
+		new_req_raw := fmt.Sprintf("%s%s%d\n\n%s", new_header, "Content-Length: ", c_l, s[1])
+		return new_req_raw
+	}
+	return raw_req
 }
 
 func RequestToString(r *http.Request) string {

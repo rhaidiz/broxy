@@ -28,13 +28,17 @@ func NewRepeaterController(module *Repeater, gui *RepeaterGui, s *core.Session) 
 
 func (c *RepeaterController) GoClick(b bool) {
 	c.Sess.Debug(c.Module.Name(), "Go pressed")
-	r := strings.NewReader(c.Gui.RequestEditor.ToPlainText())
+
+	r_raw := util.NormalizeRequest(c.Gui.RequestEditor.ToPlainText())
+	c.Gui.RequestEditor.SetPlainText(r_raw)
+
+	r := strings.NewReader(r_raw)
 	buf := bufio.NewReader(r)
 
 	req, err := http.ReadRequest(buf)
 
 	if err != nil {
-		c.Sess.Debug(c.Module.Name(), fmt.Sprintf("errore %v", err))
+		c.Sess.Err(c.Module.Name(), fmt.Sprintf("ReadRequest %v", err))
 		return
 	} else {
 		c.Sess.Debug(c.Module.Name(), req.Host)
@@ -48,7 +52,7 @@ func (c *RepeaterController) GoClick(b bool) {
 		resp, err := c.Module.RunRequest(req)
 
 		if err != nil {
-			c.Sess.Debug(c.Module.Name(), fmt.Sprintf("errore %v", err))
+			c.Sess.Err(c.Module.Name(), fmt.Sprintf("RunRequest %v", err))
 		} else {
 			c.Gui.ResponseEditor.SetPlainText(util.ResponseToString(resp))
 		}

@@ -276,6 +276,11 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 		var edited_bodyBytes []byte
 		edited_bodyBytes, _ = ioutil.ReadAll(edited_req.Body)
 		edited_req.Body = ioutil.NopCloser(bytes.NewBuffer(edited_bodyBytes))
+
+		print("edited\n")
+		print(string(edited_bodyBytes))
+		print("\n")
+
 		req.EditedReq = &model.Request{
 			Path:          edited_req.URL.Path,
 			Schema:        edited_req.URL.Scheme,
