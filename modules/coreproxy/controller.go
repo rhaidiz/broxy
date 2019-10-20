@@ -185,6 +185,12 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 	// activate interceptor
 	var edited_resp *http.Response
 	if c.interceptor_status && c.intercept_responses {
+		//TODO: [IMPROVEMENT] change this code like this:
+		// move everythign in a single method related to intercept
+		// args: request, response
+		// return response
+		// if the response is nil, it means the interceptor did not change the response
+
 		// increase the requests in queue
 		c.responses_queue = c.responses_queue + 1
 		mutex.Lock()
@@ -221,7 +227,7 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 		r = edited_resp
 	}
 
-	// FIXME: For whatever reason, I have to use a full HttpItem insteam of a Resp
+	// TODO: [BUG] For whatever reason, I have to use a full HttpItem insteam of a Resp
 	c.model.Custom.EditItem(http_item, ctx.Session)
 
 	return r
@@ -347,7 +353,7 @@ func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp
 		// pressed forward
 		// remove "Content-Length" so that the ReadResponse will compute the right ContentLength
 
-		var re = regexp.MustCompile(`(Content-Length: \d+)`)
+		var re = regexp.MustCompile(`(Content-Length: \d+)\n`)
 		s := re.ReplaceAllString(c.Gui.InterceptorEditor.ToPlainText(), "")
 
 		reader := strings.NewReader(s)

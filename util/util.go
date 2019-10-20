@@ -61,6 +61,9 @@ func NormalizeRequest(raw_req string) string {
 	s := a.Split(raw_req, 2)
 	if len(s) == 2 {
 		c_l := len(s[1])
+		if c_l == 0 {
+			return raw_req
+		}
 		h := strings.Split(s[0], "\n")
 		new_header := ""
 		for _, v := range h {
