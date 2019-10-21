@@ -160,7 +160,6 @@ func (p *Coreproxy) onRespDef(r *http.Response, ctx *goproxy.ProxyCtx) *http.Res
 }
 
 func setCa(caCert, caKey []byte) error {
-	println("setca")
 	goproxyCa, err := tls.X509KeyPair(caCert, caKey)
 	if err != nil {
 		return err

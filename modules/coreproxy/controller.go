@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	_ "net/url"
 	"regexp"
@@ -184,10 +185,6 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 	}
 	// activate interceptor
 	if c.interceptor_status && c.intercept_responses {
-		//TODO: [IMPROVEMENT] change this code like this:
-		// move everythign in a single method related to intercept
-		// args: request, response
-		// return response
 		// if the response is nil, it means the interceptor did not change the response
 
 		r.ContentLength = int64(len(bodyBytes))
@@ -223,12 +220,12 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 		// Restore the io.ReadCloser to its original state
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
-	req := model.NewHttpItem(nil)
+	http_item := model.NewHttpItem(nil)
 	c.id = c.id + 1
-	req.ID = c.id
+	http_item.ID = c.id
 
 	// this is the original request, save it for the history
-	req.Req = &model.Request{
+	http_item.Req = &model.Request{
 		Path:          r.URL.Path,
 		Schema:        r.URL.Scheme,
 		Method:        r.Method,
@@ -239,79 +236,106 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 		Proto:         r.Proto,
 	}
 
-	var edited_req *http.Request
 	// activate interceptor
 	if c.interceptor_status && c.intercept_requests {
-		// increase the requests in queue
-		c.requests_queue = c.requests_queue + 1
-		mutex.Lock()
-		c.Gui.InterceptorEditor.SetPlainText(req.Req.ToString() + "\n")
-		// now wait until a decision is made
-		for edited_req, resp = c.interceptorRequestActions(r, nil); edited_req == nil; edited_req, resp = c.interceptorRequestActions(r, nil) {
-			// doesn't look good but makes sence ... I guess
-			// continue to perform intercetorAction until I don't get nil as response
+
+		edited_req, edited_resp := c.interceptorRequestActions(r, nil)
+
+		if edited_req != nil {
+			var edited_bodyBytes []byte
+			edited_bodyBytes, _ = ioutil.ReadAll(edited_req.Body)
+			edited_req.Body = ioutil.NopCloser(bytes.NewBuffer(edited_bodyBytes))
+
+			http_item.EditedReq = &model.Request{
+				Path:          edited_req.URL.Path,
+				Schema:        edited_req.URL.Scheme,
+				Method:        edited_req.Method,
+				Body:          edited_bodyBytes,
+				Host:          edited_req.Host,
+				ContentLength: edited_req.ContentLength,
+				Headers:       edited_req.Header,
+				Proto:         edited_req.Proto,
+			}
+			r = edited_req
+			resp = edited_resp
+
 		}
-		// decrease the requests in queue
-		c.requests_queue = c.requests_queue - 1
-		// rest the editor
-		c.Gui.InterceptorEditor.SetPlainText("")
-		mutex.Unlock()
-	}
 
-	if edited_req != nil && !util.RequestsEquals(r, edited_req) {
-
-		var edited_bodyBytes []byte
-		edited_bodyBytes, _ = ioutil.ReadAll(edited_req.Body)
-		edited_req.Body = ioutil.NopCloser(bytes.NewBuffer(edited_bodyBytes))
-
-		print("edited\n")
-		print(string(edited_bodyBytes))
-		print("\n")
-
-		req.EditedReq = &model.Request{
-			Path:          edited_req.URL.Path,
-			Schema:        edited_req.URL.Scheme,
-			Method:        edited_req.Method,
-			Body:          edited_bodyBytes,
-			Host:          edited_req.Host,
-			ContentLength: edited_req.ContentLength,
-			Headers:       edited_req.Header,
-			Proto:         edited_req.Proto,
-		}
-		r = edited_req
 	}
 
 	// add the request to the history only at the end
-	c.model.Custom.AddItem(req, ctx.Session)
+	c.model.Custom.AddItem(http_item, ctx.Session)
 
 	return r, resp
 }
 
 func (c *CoreproxyController) interceptorRequestActions(req *http.Request, resp *http.Response) (*http.Request, *http.Response) {
 
-	select {
-	// pressed forward
-	case <-c.forward_chan:
-		if !c.interceptor_status {
-			return req, nil
-		}
-		reader := strings.NewReader(util.NormalizeRequest(c.Gui.InterceptorEditor.ToPlainText()))
-		buf := bufio.NewReader(reader)
+	// the request to return
+	var _req *http.Request
+	var _resp *http.Response
 
-		r, err := http.ReadRequest(buf)
-		if err != nil {
-			c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Req: %s", err.Error()))
-			return nil, nil
+	c.requests_queue = c.requests_queue + 1
+	mutex.Lock()
+	delete(req.Header, "Connection")
+	c.Gui.InterceptorEditor.SetPlainText(util.RequestToString(req) + "\n")
+
+	for {
+		parse_error := false
+		select {
+		// pressed forward
+		case <-c.forward_chan:
+			if !c.interceptor_status {
+				_req = req
+				_resp = nil
+				break
+			}
+			var r *http.Request
+			var err error
+
+			reader := strings.NewReader(util.NormalizeRequest(c.Gui.InterceptorEditor.ToPlainText()))
+			buf := bufio.NewReader(reader)
+
+			r, err = http.ReadRequest(buf)
+			if err != nil && err == io.ErrUnexpectedEOF {
+				reader := strings.NewReader(util.NormalizeRequest(c.Gui.InterceptorEditor.ToPlainText()) + "\n\n")
+				buf := bufio.NewReader(reader)
+				// this is so ugly
+				r, err = http.ReadRequest(buf)
+				if err != nil {
+					c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Req: %s", err.Error()))
+					parse_error = true
+				}
+			}
+			if err == nil {
+				r.URL.Scheme = req.URL.Scheme
+				r.URL.Host = req.URL.Host
+				r.RequestURI = ""
+				if util.RequestsEquals(req, r) {
+					_req = nil
+					_resp = nil
+				} else {
+					_req = r
+					_resp = nil
+				}
+			}
+		// pressed drop
+		case <-c.drop_chan:
+			_req = req
+			_resp = goproxy.NewResponse(req,
+				goproxy.ContentTypeText, http.StatusForbidden, "Request droppped")
 		}
-		r.URL.Scheme = req.URL.Scheme
-		r.URL.Host = req.URL.Host
-		r.RequestURI = ""
-		return r, nil
-	// pressed drop
-	case <-c.drop_chan:
-		return req, goproxy.NewResponse(req,
-			goproxy.ContentTypeText, http.StatusForbidden, "Request droppped")
+		if !parse_error {
+			break
+		}
 	}
+	// decrease the requests in queue
+	c.requests_queue = c.requests_queue - 1
+	// rest the editor
+	c.Gui.InterceptorEditor.SetPlainText("")
+	mutex.Unlock()
+
+	return _req, _resp
 }
 
 func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp *http.Response) *http.Response {
@@ -333,6 +357,7 @@ func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp
 		case <-c.forward_chan:
 			if !c.interceptor_status {
 				_resp = resp
+				break
 			}
 			// if response is bigger than 100mb, ignore the content of the QPlainTextEditor
 			if resp.ContentLength >= 1e+8 {
@@ -344,23 +369,34 @@ func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp
 				_resp = resp
 			}
 
+			var tmp *http.Response
+			var err error
 			// pressed forward
 			// remove "Content-Length" so that the ReadResponse will compute the right ContentLength
 
-			var re = regexp.MustCompile(`(Content-Length: \d+)\n`)
+			var re = regexp.MustCompile(`(Content-Length: *\d+)\n?`)
 			s := re.ReplaceAllString(c.Gui.InterceptorEditor.ToPlainText(), "")
 
 			reader := strings.NewReader(s)
 			buf := bufio.NewReader(reader)
 
-			tmp, err := http.ReadResponse(buf, nil)
+			tmp, err = http.ReadResponse(buf, nil)
 			// so bad, fix me
 			_resp = tmp
 
-			if err != nil {
-				c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Resp: %s", err.Error()))
-				parse_error = true
-			} else {
+			if err != nil && err == io.ErrUnexpectedEOF {
+				reader := strings.NewReader(s + "\n\n")
+				buf := bufio.NewReader(reader)
+				// this is so ugly
+				tmp, err = http.ReadResponse(buf, nil)
+				_resp = tmp
+				if err != nil {
+					c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Req: %s", err.Error()))
+					parse_error = true
+				}
+			}
+
+			if err == nil {
 				if util.ResponsesEquals(resp, _resp) {
 					// response not edited
 					_resp = nil
