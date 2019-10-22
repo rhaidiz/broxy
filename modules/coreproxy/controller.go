@@ -38,6 +38,8 @@ type CoreproxyController struct {
 	// will maintain the number of requests in queue
 	requests_queue  int
 	responses_queue int
+
+	dropped map[int64]bool
 }
 
 var mutex = &sync.Mutex{}
@@ -56,6 +58,7 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 		drop_chan:           make(chan bool),
 		requests_queue:      0,
 		responses_queue:     0,
+		dropped:             make(map[int64]bool),
 	}
 
 	c.model = model.NewSortFilterModel(nil)
@@ -184,11 +187,12 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 		Headers:       r.Header,
 	}
 	// activate interceptor
-	if c.interceptor_status && c.intercept_responses {
+	_, dropped := c.dropped[ctx.Session]
+	if c.interceptor_status && c.intercept_responses && !dropped {
 		// if the response is nil, it means the interceptor did not change the response
 
 		r.ContentLength = int64(len(bodyBytes))
-		edited_resp := c.interceptorResponseActions(nil, r)
+		edited_resp := c.interceptorResponseActions(ctx.Req, r)
 		// the response was edited
 		if edited_resp != nil {
 			var edited_bodyBytes []byte
@@ -239,7 +243,7 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 	// activate interceptor
 	if c.interceptor_status && c.intercept_requests {
 
-		edited_req, edited_resp := c.interceptorRequestActions(r, nil)
+		edited_req, edited_resp := c.interceptorRequestActions(r, nil, ctx)
 
 		if edited_req != nil {
 			var edited_bodyBytes []byte
@@ -269,7 +273,7 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 	return r, resp
 }
 
-func (c *CoreproxyController) interceptorRequestActions(req *http.Request, resp *http.Response) (*http.Request, *http.Response) {
+func (c *CoreproxyController) interceptorRequestActions(req *http.Request, resp *http.Response, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 
 	// the request to return
 	var _req *http.Request
@@ -321,6 +325,7 @@ func (c *CoreproxyController) interceptorRequestActions(req *http.Request, resp 
 			}
 		// pressed drop
 		case <-c.drop_chan:
+			c.dropped[ctx.Session] = true
 			_req = req
 			_resp = goproxy.NewResponse(req,
 				goproxy.ContentTypeText, http.StatusForbidden, "Request droppped")
@@ -404,8 +409,8 @@ func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp
 			}
 		case <-c.drop_chan:
 			// pressed drop
-			resp.Body = ioutil.NopCloser(bytes.NewReader([]byte("Response dropped by user")))
-			_resp = resp
+			_resp = goproxy.NewResponse(req,
+				goproxy.ContentTypeText, http.StatusForbidden, "Request droppped")
 		}
 		if !parse_error {
 			break
