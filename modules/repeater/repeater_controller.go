@@ -54,7 +54,7 @@ func (c *RepeaterController) GoClick(b bool) {
 		if err != nil {
 			c.Sess.Err(c.Module.Name(), fmt.Sprintf("RunRequest %v", err))
 		} else {
-			c.Gui.ResponseEditor.SetPlainText(util.ResponseToString(resp))
+			c.Gui.ResponseEditor.SetPlainText(util.ResponseToString(resp, false))
 		}
 	}()
 }

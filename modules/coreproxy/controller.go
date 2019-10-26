@@ -3,6 +3,7 @@ package coreproxy
 import (
 	"bufio"
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -346,15 +347,24 @@ func (c *CoreproxyController) interceptorRequestActions(req *http.Request, resp 
 func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp *http.Response) *http.Response {
 
 	var _resp *http.Response
-
+	body_hex := false
 	// increase the requests in queue
 	c.responses_queue = c.responses_queue + 1
 	mutex.Lock()
 	// if response is bigger than 100mb, show message that is too big
+	// if the response has come sort of encoding, show the body as hex
+	// and confert it back to string after the editing
 	if resp.ContentLength >= 1e+8 {
 		c.Gui.InterceptorEditor.SetPlainText("Response too big")
 	} else {
-		c.Gui.InterceptorEditor.SetPlainText(util.ResponseToString(resp))
+		_, content_type_ok := resp.Header["Content-Type"]
+		_, content_encoding_ok := resp.Header["Content-Encoding"]
+		if (content_type_ok && strings.HasPrefix(resp.Header["Content-Type"][0], "image")) || content_encoding_ok {
+			c.Gui.InterceptorEditor.SetPlainText(util.ResponseToString(resp, true))
+			body_hex = true
+		} else {
+			c.Gui.InterceptorEditor.SetPlainText(util.ResponseToString(resp, false))
+		}
 	}
 	for {
 		parse_error := false
@@ -368,43 +378,53 @@ func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp
 			if resp.ContentLength >= 1e+8 {
 				_resp = resp
 			}
-			// FIXME: images cannot be tampered. I show them in case the user wants to drop, but cannot be tampered
-			// because the QPlaintTextEditor only supports utf-8 character encoding
-			if _, ok := resp.Header["Content-Type"]; ok && strings.HasPrefix(resp.Header["Content-Type"][0], "image") {
-				_resp = resp
-			}
 
 			var tmp *http.Response
 			var err error
 			// pressed forward
 			// remove "Content-Length" so that the ReadResponse will compute the right ContentLength
-
 			var re = regexp.MustCompile(`(Content-Length: *\d+)\n?`)
 			s := re.ReplaceAllString(c.Gui.InterceptorEditor.ToPlainText(), "")
 
-			reader := strings.NewReader(s)
-			buf := bufio.NewReader(reader)
-
-			tmp, err = http.ReadResponse(buf, nil)
-			// so bad, fix me
-			_resp = tmp
-
-			if err != nil && err == io.ErrUnexpectedEOF {
-				reader := strings.NewReader(s + "\n\n")
-				buf := bufio.NewReader(reader)
-				// this is so ugly
-				tmp, err = http.ReadResponse(buf, nil)
-				_resp = tmp
-				if err != nil {
-					c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Req: %s", err.Error()))
-					parse_error = true
+			if body_hex {
+				a := regexp.MustCompile(`\n\n`)
+				s1 := a.Split(s, 2)
+				if len(s1) == 2 {
+					br, err := hex.DecodeString(s1[1])
+					if err != nil {
+						c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Resp: %s", err.Error()))
+						parse_error = true
+					} else {
+						body_hex = false
+						s = fmt.Sprintf("%s\n%s", s1[0], string(br))
+					}
 				}
-			}
+			} else {
 
-			if err == nil {
-				if util.ResponsesEquals(resp, _resp) {
-					// response not edited
-					_resp = nil
+				reader := strings.NewReader(s)
+				buf := bufio.NewReader(reader)
+
+				tmp, err = http.ReadResponse(buf, nil)
+				// so bad, fix me
+				_resp = tmp
+
+				if err != nil && err == io.ErrUnexpectedEOF {
+					reader := strings.NewReader(s + "\n\n")
+					buf := bufio.NewReader(reader)
+					// this is so ugly
+					tmp, err = http.ReadResponse(buf, nil)
+					_resp = tmp
+					if err != nil {
+						c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Resp: %s", err.Error()))
+						parse_error = true
+					}
+				}
+
+				if err == nil {
+					if util.ResponsesEquals(resp, _resp) {
+						// response not edited
+						_resp = nil
+					}
 				}
 			}
 		case <-c.drop_chan:

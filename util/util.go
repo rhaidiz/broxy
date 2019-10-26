@@ -97,7 +97,7 @@ func RequestToString(r *http.Request) string {
 	return ret
 }
 
-func ResponseToString(r *http.Response) string {
+func ResponseToString(r *http.Response, body_bytes bool) string {
 	if r == nil {
 		return ""
 	}
@@ -109,12 +109,14 @@ func ResponseToString(r *http.Response) string {
 		}
 		ret = ret + fmt.Sprintf("%s: %s\n", k, values)
 	}
-	ret = ret + fmt.Sprintf("Content-Length: %v\n", r.ContentLength)
+	//ret = ret + fmt.Sprintf("Content-Length: %v\n", r.ContentLength)
 	bodyBytes, _ := ioutil.ReadAll(r.Body)
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 
-	if len(bodyBytes) > 0 {
+	if len(bodyBytes) > 0 && !body_bytes {
 		ret = ret + fmt.Sprintf("\n%s", string(bodyBytes))
+	} else {
+		ret = ret + fmt.Sprintf("\n%x", bodyBytes)
 	}
 	return ret
 }
