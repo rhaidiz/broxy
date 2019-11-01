@@ -73,7 +73,19 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 	c.Gui.Toggle = c.interceptorToggle
 	c.Gui.Forward = c.forward
 	c.Gui.Drop = c.drop
+	c.Gui.ApplyFilters = c.applyFilters
+	c.Gui.ResetFilters = c.resetFilters
 	return c
+}
+
+func (c *CoreproxyController) applyFilters(b bool) {
+	fmt.Printf("apply filters: %s", c.Gui.TextSearchLineEdit.DisplayText())
+	c.model.SetFilter(c.Gui.TextSearchLineEdit.DisplayText())
+}
+
+func (c *CoreproxyController) resetFilters(b bool) {
+	c.model.ResetFilters()
+	println("reset filters")
 }
 
 // buttons logic

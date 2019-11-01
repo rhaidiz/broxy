@@ -18,11 +18,12 @@ type CoreproxyGui struct {
 
 	Sess *core.Session
 
-	StartProxy func(bool)
-	StopProxy  func()
-	RowClicked func(int)
+	StartProxy   func(bool)
+	StopProxy    func()
+	RowClicked   func(int)
+	ApplyFilters func(bool)
+	ResetFilters func(bool)
 
-	historyTab  *widgets.QTabWidget
 	settingsTab *widgets.QTabWidget
 
 	//_ func() `signal:"test,auto"`
@@ -35,6 +36,10 @@ type CoreproxyGui struct {
 	EditedRequestText  *widgets.QPlainTextEdit
 	ResponseText       *widgets.QPlainTextEdit
 	EditedResponseText *widgets.QPlainTextEdit
+	historyTab         *widgets.QTabWidget
+	TextSearchLineEdit *widgets.QLineEdit
+	ApplyFiltersBtn    *widgets.QPushButton
+	ResetFiltersBtn    *widgets.QPushButton
 
 	coreProxyGui *widgets.QTabWidget
 
@@ -124,6 +129,122 @@ func (g *CoreproxyGui) intercetorTabGui() widgets.QWidget_ITF {
 
 	return widget
 
+}
+
+func (g *CoreproxyGui) filtersTabGui() widgets.QWidget_ITF {
+	widget := widgets.NewQWidget(nil, 0)
+	vlayout1 := widgets.NewQVBoxLayout()
+	widget.SetLayout(vlayout1)
+
+	// in-scope checkbox
+	label := widgets.NewQLabel(nil, 0)
+	font := gui.NewQFont()
+	font.SetPointSize(20)
+	font.SetBold(true)
+	font.SetWeight(75)
+	label.SetFont(font)
+	label.SetText("Req type")
+	vlayout1.AddWidget(label, 0, qtcore.Qt__AlignLeft)
+
+	Checkbox_only_scope := widgets.NewQCheckBox(nil)
+	Checkbox_only_scope.SetText("Only in-scope")
+	vlayout1.AddWidget(Checkbox_only_scope, 0, qtcore.Qt__AlignLeft)
+
+	// search text
+	label2 := widgets.NewQLabel(nil, 0)
+	font2 := gui.NewQFont()
+	font2.SetPointSize(20)
+	font2.SetBold(true)
+	font2.SetWeight(75)
+	label2.SetFont(font2)
+	label2.SetText("Text search")
+	vlayout1.AddWidget(label2, 0, qtcore.Qt__AlignLeft)
+
+	g.TextSearchLineEdit = widgets.NewQLineEdit(nil)
+	g.TextSearchLineEdit.SetMinimumSize(qtcore.NewQSize2(150, 0))
+	g.TextSearchLineEdit.SetMaximumSize(qtcore.NewQSize2(150, 16777215))
+	g.TextSearchLineEdit.SetBaseSize(qtcore.NewQSize2(0, 0))
+	g.TextSearchLineEdit.SetText("")
+	vlayout1.AddWidget(g.TextSearchLineEdit, 0, qtcore.Qt__AlignLeft)
+
+	// Status
+	label3 := widgets.NewQLabel(nil, 0)
+	font3 := gui.NewQFont()
+	font3.SetPointSize(20)
+	font3.SetBold(true)
+	font3.SetWeight(75)
+	label3.SetFont(font3)
+	label3.SetText("Status")
+	vlayout1.AddWidget(label3, 0, qtcore.Qt__AlignLeft)
+
+	Checkbox_status_200 := widgets.NewQCheckBox(nil)
+	Checkbox_status_200.SetText("200 OK")
+	vlayout1.AddWidget(Checkbox_status_200, 0, qtcore.Qt__AlignLeft)
+
+	Checkbox_status_404 := widgets.NewQCheckBox(nil)
+	Checkbox_status_404.SetText("404 Not Found")
+	vlayout1.AddWidget(Checkbox_status_404, 0, qtcore.Qt__AlignLeft)
+
+	Checkbox_status_500 := widgets.NewQCheckBox(nil)
+	Checkbox_status_500.SetText("500 Internal Server Error")
+	vlayout1.AddWidget(Checkbox_status_500, 0, qtcore.Qt__AlignLeft)
+
+	// Extensions
+	label4 := widgets.NewQLabel(nil, 0)
+	font4 := gui.NewQFont()
+	font4.SetPointSize(20)
+	font4.SetBold(true)
+	font4.SetWeight(75)
+	label4.SetFont(font4)
+	label4.SetText("Extension")
+
+	vlayout1.AddWidget(label4, 0, qtcore.Qt__AlignLeft)
+
+	gridLayout := widgets.NewQGridLayout2()
+	LineEdit_show_extension := widgets.NewQLineEdit(nil)
+	LineEdit_show_extension.SetMinimumSize(qtcore.NewQSize2(150, 0))
+	LineEdit_show_extension.SetMaximumSize(qtcore.NewQSize2(150, 16777215))
+	LineEdit_show_extension.SetBaseSize(qtcore.NewQSize2(0, 0))
+	LineEdit_show_extension.SetText("")
+
+	LineEdit_hide_extension := widgets.NewQLineEdit(nil)
+	LineEdit_hide_extension.SetMinimumSize(qtcore.NewQSize2(150, 0))
+	LineEdit_hide_extension.SetMaximumSize(qtcore.NewQSize2(150, 16777215))
+	LineEdit_hide_extension.SetBaseSize(qtcore.NewQSize2(0, 0))
+	LineEdit_hide_extension.SetText("")
+
+	Checkbox_show_only := widgets.NewQCheckBox(nil)
+	Checkbox_show_only.SetText("Show only")
+
+	Checkbox_hide_only := widgets.NewQCheckBox(nil)
+	Checkbox_hide_only.SetText("Hide")
+
+	gridLayout.AddWidget(LineEdit_show_extension, 0, 1, 1)
+	gridLayout.AddWidget(LineEdit_hide_extension, 1, 1, 1)
+
+	gridLayout.AddWidget(Checkbox_show_only, 0, 0, 1)
+	gridLayout.AddWidget(Checkbox_hide_only, 1, 0, 1)
+
+	spacerItem := widgets.NewQSpacerItem(400, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
+	gridLayout.AddItem(spacerItem, 0, 2, 1, 1, qtcore.Qt__AlignRight)
+
+	vlayout1.AddLayout(gridLayout, 0)
+
+	// Apply\Reset buttons
+	g.ApplyFiltersBtn = widgets.NewQPushButton2("Apply", nil)
+	g.ApplyFiltersBtn.ConnectClicked(g.ApplyFilters)
+
+	gridLayout.AddWidget(g.ApplyFiltersBtn, 2, 1, 1)
+
+	g.ResetFiltersBtn = widgets.NewQPushButton2("Reset", nil)
+	g.ResetFiltersBtn.ConnectClicked(g.ResetFilters)
+
+	gridLayout.AddWidget(g.ResetFiltersBtn, 2, 0, 1)
+
+	spacerItem1 := widgets.NewQSpacerItem(20, 40, widgets.QSizePolicy__Minimum, widgets.QSizePolicy__Expanding)
+	vlayout1.AddItem(spacerItem1)
+
+	return widget
 }
 
 func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
@@ -219,6 +340,10 @@ func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
 	g.view.SetResizeMode(quick.QQuickView__SizeRootObjectToView)
 	g.view.SetSource(qtcore.NewQUrl3("qrc:/qml/main.qml", 0))
 
+	// history tab with filters
+	g.historyTab = widgets.NewQTabWidget(nil)
+	g.historyTab.SetDocumentMode(true)
+
 	// request\response tabs with text editor
 	g.reqRespTab = widgets.NewQTabWidget(nil)
 	g.reqRespTab.SetDocumentMode(true)
@@ -239,6 +364,10 @@ func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
 	g.splitter.SetOrientation(qtcore.Qt__Vertical)
 	g.splitter.AddWidget(widgets.QWidget_CreateWindowContainer(g.view, nil, 0))
 	g.splitter.AddWidget(g.reqRespTab)
+
+	g.historyTab.AddTab(g.splitter, "History")
+	g.historyTab.AddTab(g.filtersTabGui(), "Filters")
+
 	var sizes []int
 	sizes = make([]int, 2)
 	sizes[0] = 1 * g.splitter.SizeHint().Height()
@@ -250,7 +379,7 @@ func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
 	// g.startBtn.ConnectClicked(g.StartProxy)
 
 	g.coreProxyGui.AddTab(g.intercetorTabGui(), "Interceptor")
-	g.coreProxyGui.AddTab(g.splitter, "History")
+	g.coreProxyGui.AddTab(g.historyTab, "History")
 	g.coreProxyGui.AddTab(g.settingsTabGui(), "Settings")
 
 	return g.coreProxyGui

@@ -2,12 +2,15 @@ package model
 
 import (
 	"github.com/therecipe/qt/core"
+	"strings"
 )
 
 type SortFilterModel struct {
 	core.QSortFilterProxyModel
 
 	Custom *CustomTableModel
+
+	searchtext string
 
 	_ func() `constructor:"init"`
 
@@ -25,7 +28,26 @@ func (m *SortFilterModel) init() {
 	//m.SetSortRole(Time)
 	//m.Sort(0, core.Qt__DescendingOrder)
 
+	m.ConnectFilterAcceptsRow(m.filterAcceptsRow)
 	m.ConnectSortTableView(m.sortTableView)
+}
+
+func (m *SortFilterModel) SetFilter(s string) {
+	m.searchtext = s
+	m.InvalidateFilter()
+}
+
+func (m *SortFilterModel) ResetFilters() {
+	m.searchtext = ""
+	m.InvalidateFilter()
+}
+
+func (m *SortFilterModel) filterAcceptsRow(sourceRow int, sourceParent *core.QModelIndex) bool {
+	req, _, _, _ := m.Custom.GetReqResp(sourceRow)
+	if strings.Contains(req.Host, m.searchtext) {
+		return true
+	}
+	return false
 }
 
 func (m *SortFilterModel) sortTableView(column string, order core.Qt__SortOrder) {
