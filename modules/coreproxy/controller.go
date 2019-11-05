@@ -25,6 +25,7 @@ type CoreproxyController struct {
 	Module *Coreproxy
 	Gui    *CoreproxyGui
 	Sess   *core.Session
+	filter *model.Filter
 
 	isRunning bool
 	model     *model.SortFilterModel
@@ -60,6 +61,7 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 		requests_queue:      0,
 		responses_queue:     0,
 		dropped:             make(map[int64]bool),
+		filter:              &model.Filter{},
 	}
 
 	c.model = model.NewSortFilterModel(nil)
@@ -75,17 +77,64 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 	c.Gui.Drop = c.drop
 	c.Gui.ApplyFilters = c.applyFilters
 	c.Gui.ResetFilters = c.resetFilters
+	// load default filters
+	c.Gui.ControllerInit = c.defaultFilter
 	return c
 }
 
+// Filters
+func (c *CoreproxyController) defaultFilter() {
+	c.Gui.TextSearchLineEdit.SetText("")
+	c.Gui.Checkbox_status_100.SetChecked(true)
+	c.Gui.Checkbox_status_200.SetChecked(true)
+	c.Gui.Checkbox_status_300.SetChecked(true)
+	c.Gui.Checkbox_status_400.SetChecked(true)
+	c.Gui.Checkbox_status_500.SetChecked(true)
+	c.Gui.Checkbox_show_only.SetChecked(false)
+	c.Gui.Checkbox_hide_only.SetChecked(true)
+	c.Gui.LineEdit_show_extension.SetText("asp, aspx, jsp, php, html, htm")
+	c.Gui.LineEdit_hide_extension.SetText("png, jpg, css, woff2, ico")
+	c.applyFilters(true)
+}
+
 func (c *CoreproxyController) applyFilters(b bool) {
-	fmt.Printf("apply filters: %s", c.Gui.TextSearchLineEdit.DisplayText())
-	c.model.SetFilter(c.Gui.TextSearchLineEdit.DisplayText())
+	c.filter.Search = c.Gui.TextSearchLineEdit.DisplayText()
+	var status []int
+	if c.Gui.Checkbox_status_100.IsChecked() {
+		status = append(status, 100)
+	}
+	if c.Gui.Checkbox_status_200.IsChecked() {
+		status = append(status, 200)
+	}
+	if c.Gui.Checkbox_status_300.IsChecked() {
+		status = append(status, 300)
+	}
+	if c.Gui.Checkbox_status_400.IsChecked() {
+		status = append(status, 400)
+	}
+	if c.Gui.Checkbox_status_500.IsChecked() {
+		status = append(status, 500)
+	}
+	// this also looks bad, creating a new status each time and replacing it ... bleah ...
+	//IMP: make me pretier
+	c.filter.StatusCode = status
+	c.filter.Show_ext = make(map[string]bool)
+	if c.Gui.Checkbox_show_only.IsChecked() {
+		for _, e := range strings.Split(strings.Replace(c.Gui.LineEdit_show_extension.DisplayText(), " ", "", -1), ",") {
+			c.filter.Show_ext[e] = true
+		}
+	}
+	c.filter.Hide_ext = make(map[string]bool)
+	if c.Gui.Checkbox_hide_only.IsChecked() {
+		for _, e := range strings.Split(strings.Replace(c.Gui.LineEdit_hide_extension.DisplayText(), " ", "", -1), ",") {
+			c.filter.Hide_ext[e] = true
+		}
+	}
+	c.model.SetFilter(c.filter)
 }
 
 func (c *CoreproxyController) resetFilters(b bool) {
-	c.model.ResetFilters()
-	println("reset filters")
+	c.defaultFilter()
 }
 
 // buttons logic
@@ -193,7 +242,9 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 		// Restore the io.ReadCloser to its original state
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
-	http_item.Resp = &model.Response{Status: r.Status,
+	http_item.Resp = &model.Response{
+		Status:        r.Status,
+		StatusCode:    r.StatusCode,
 		Body:          bodyBytes,
 		Proto:         r.Proto,
 		ContentLength: int64(len(bodyBytes)),
@@ -213,6 +264,7 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 			edited_resp.Body = ioutil.NopCloser(bytes.NewBuffer(edited_bodyBytes))
 			http_item.EditedResp = &model.Response{
 				Status:        edited_resp.Status,
+				StatusCode:    edited_resp.StatusCode,
 				Proto:         edited_resp.Proto,
 				Body:          edited_bodyBytes,
 				ContentLength: int64(len(edited_bodyBytes)),
@@ -241,6 +293,12 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 	c.id = c.id + 1
 	http_item.ID = c.id
 
+	re := regexp.MustCompile(`\.(\w*)($|\?|\#)`)
+	matches := re.FindStringSubmatch(r.URL.Path)
+	ext := ""
+	if len(matches) >= 1 {
+		ext = matches[1]
+	}
 	// this is the original request, save it for the history
 	http_item.Req = &model.Request{
 		Path:          r.URL.Path,
@@ -251,6 +309,7 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 		ContentLength: r.ContentLength,
 		Headers:       r.Header,
 		Proto:         r.Proto,
+		Extension:     ext,
 	}
 
 	// activate interceptor
@@ -263,6 +322,13 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 			edited_bodyBytes, _ = ioutil.ReadAll(edited_req.Body)
 			edited_req.Body = ioutil.NopCloser(bytes.NewBuffer(edited_bodyBytes))
 
+			re := regexp.MustCompile(`\.(\w*)($|\?|\#)`)
+			matches := re.FindStringSubmatch(r.URL.Path)
+			ext := ""
+			if len(matches) >= 1 {
+				ext = matches[1]
+			}
+
 			http_item.EditedReq = &model.Request{
 				Path:          edited_req.URL.Path,
 				Schema:        edited_req.URL.Scheme,
@@ -272,6 +338,7 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 				ContentLength: edited_req.ContentLength,
 				Headers:       edited_req.Header,
 				Proto:         edited_req.Proto,
+				Extension:     ext,
 			}
 			r = edited_req
 			resp = edited_resp

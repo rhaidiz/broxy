@@ -10,7 +10,7 @@ type SortFilterModel struct {
 
 	Custom *CustomTableModel
 
-	searchtext string
+	filter *Filter
 
 	_ func() `constructor:"init"`
 
@@ -32,22 +32,59 @@ func (m *SortFilterModel) init() {
 	m.ConnectSortTableView(m.sortTableView)
 }
 
-func (m *SortFilterModel) SetFilter(s string) {
-	m.searchtext = s
+func (m *SortFilterModel) SetFilter(f *Filter) {
+	m.filter = f
 	m.InvalidateFilter()
 }
 
 func (m *SortFilterModel) ResetFilters() {
-	m.searchtext = ""
 	m.InvalidateFilter()
 }
 
 func (m *SortFilterModel) filterAcceptsRow(sourceRow int, sourceParent *core.QModelIndex) bool {
-	req, _, _, _ := m.Custom.GetReqResp(sourceRow)
-	if strings.Contains(req.Host, m.searchtext) {
+	if m.filter == nil {
 		return true
 	}
-	return false
+	req, edited_req, resp, edited_resp := m.Custom.GetReqResp(sourceRow)
+
+	// extension
+	if (len(m.filter.Hide_ext) > 0 && m.filter.Hide_ext[req.Extension] == true) ||
+		(len(m.filter.Show_ext) > 0 && m.filter.Show_ext[req.Extension] == false) {
+		return false
+	}
+
+	// response status
+	next := false //IMP: make me pretier
+	for _, i := range m.filter.StatusCode {
+		if resp != nil && ((resp.StatusCode <= i+99 && resp.StatusCode >= i) || resp.StatusCode > 599) {
+			next = true
+			break
+		}
+	}
+	if !next {
+		return false
+	}
+
+	// text search filter
+	txt := ""
+	if req != nil {
+		txt = req.ToString()
+	}
+	if edited_req != nil {
+		txt = txt + edited_req.ToString()
+	}
+	if resp != nil {
+		txt = txt + resp.ToString()
+	}
+	if edited_resp != nil {
+		txt = txt + edited_resp.ToString()
+	}
+
+	if !strings.Contains(txt, m.filter.Search) {
+		return false
+	}
+
+	return true
 }
 
 func (m *SortFilterModel) sortTableView(column string, order core.Qt__SortOrder) {

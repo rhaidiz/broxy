@@ -18,6 +18,7 @@ type Request struct {
 	Headers       map[string][]string
 	ContentLength int64
 	Body          []byte
+	Extension     string
 }
 
 func (r *Request) ToString() string {
@@ -52,6 +53,7 @@ func (r *Request) ToString() string {
 type Response struct {
 	Proto         string
 	Status        string
+	StatusCode    int
 	Headers       map[string][]string
 	ContentLength int64
 	Body          []byte
@@ -90,6 +92,29 @@ type HttpItem struct {
 	EditedReq  *Request
 	EditedResp *Response
 }
+
+//func NewHttpItem2() *HttpItem {
+// func (f *HttpItem) init() {
+// 	empty_req := &Request{
+// 		Proto:         "",
+// 		Method:        "",
+// 		Path:          "",
+// 		Schema:        "",
+// 		Host:          "",
+// 		ContentLength: -1,
+// 	}
+// 	empty_resp := &Response{
+// 		Proto:         "",
+// 		Status:        "",
+// 		StatusCode:    0,
+// 		ContentLength: -1,
+// 	}
+// 	f.ID = 0
+// 	f.Req = empty_req
+// 	f.Resp = empty_resp
+// 	f.EditedReq = empty_req
+// 	f.EditedResp = empty_resp
+// }
 
 const (
 	ID = int(core.Qt__UserRole) + 1<<iota
@@ -158,7 +183,10 @@ func (m *CustomTableModel) init() {
 }
 
 func (m *CustomTableModel) GetReqResp(i int) (*Request, *Request, *Response, *Response) {
-	return m.modelData[i].Req, m.modelData[i].EditedReq, m.modelData[i].Resp, m.modelData[i].EditedResp
+	if i >= 0 {
+		return m.modelData[i].Req, m.modelData[i].EditedReq, m.modelData[i].Resp, m.modelData[i].EditedResp
+	}
+	return nil, nil, nil, nil
 }
 
 func (m *CustomTableModel) AddReq(r *http.Request, i int64) {
@@ -212,6 +240,7 @@ func (m *CustomTableModel) data(index *core.QModelIndex, role int) *core.QVarian
 	case Path:
 		return core.NewQVariant14(item.Req.Path)
 	case Params:
+		//TODO fix me
 		if false {
 			return core.NewQVariant14("✓")
 		}
