@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/therecipe/qt/core"
+	// "github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
 )
 
@@ -17,7 +17,7 @@ type Broxygui struct {
 func (g *Broxygui) setup() {
 
 	g.SetWindowTitle("Broxy (Beta)")
-	g.SetMinimumSize(core.NewQSize2(523, 317))
+	//g.SetMinimumSize(core.NewQSize2(523, 317))
 
 	g.tabWidget = widgets.NewQTabWidget(nil)
 	g.tabWidget.SetDocumentMode(true)

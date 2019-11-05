@@ -144,9 +144,13 @@ func (g *CoreproxyGui) intercetorTabGui() widgets.QWidget_ITF {
 }
 
 func (g *CoreproxyGui) filtersTabGui() widgets.QWidget_ITF {
-	widget := widgets.NewQWidget(nil, 0)
+	scrollArea := widgets.NewQScrollArea(nil)
+	scrollArea.SetWidgetResizable(true)
+	scrollArea.SetGeometry2(10, 10, 200, 200)
+	scrollAreaWidget := widgets.NewQWidget(nil, 0)
 	vlayout1 := widgets.NewQVBoxLayout()
-	widget.SetLayout(vlayout1)
+	scrollAreaWidget.SetLayout(vlayout1)
+	scrollArea.SetWidget(scrollAreaWidget)
 
 	//TODO: implement scope
 	// in-scope checkbox
@@ -262,20 +266,24 @@ func (g *CoreproxyGui) filtersTabGui() widgets.QWidget_ITF {
 
 	gridLayout.AddWidget(g.ResetFiltersBtn, 2, 0, 1)
 
-	spacerItem1 := widgets.NewQSpacerItem(20, 40, widgets.QSizePolicy__Minimum, widgets.QSizePolicy__Expanding)
+	spacerItem1 := widgets.NewQSpacerItem(20, 1000, widgets.QSizePolicy__Minimum, widgets.QSizePolicy__Expanding)
 	vlayout1.AddItem(spacerItem1)
 
-	return widget
+	return scrollArea
 }
 
 func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
-	widget := widgets.NewQWidget(nil, 0)
+	scrollArea := widgets.NewQScrollArea(nil)
+	scrollArea.SetWidgetResizable(true)
+	scrollArea.SetGeometry2(10, 10, 200, 200)
+	scrollAreaWidget := widgets.NewQWidget(nil, 0)
 	vlayout1 := widgets.NewQVBoxLayout()
-	widget.SetLayout(vlayout1)
+	scrollAreaWidget.SetLayout(vlayout1)
+	scrollArea.SetWidget(scrollAreaWidget)
 
-	widget.SetContentsMargins(11, 11, 11, 11)
+	scrollArea.SetContentsMargins(11, 11, 11, 11)
 	////widget.SetSpacing(6)
-	widget.SetObjectName("verticalLayout")
+	scrollArea.SetObjectName("verticalLayout")
 
 	label := widgets.NewQLabel(nil, 0)
 	font := gui.NewQFont()
@@ -312,12 +320,8 @@ func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
 	spacerItem1 := widgets.NewQSpacerItem(20, 40, widgets.QSizePolicy__Minimum, widgets.QSizePolicy__Expanding)
 	vlayout1.AddItem(spacerItem1)
 
-	return widget
+	return scrollArea
 }
-
-// func (g *CoreproxyGui) SetTableModel2(m *model.CustomTableModel) {
-// 	g.tableModel = m
-// }
 
 func (g *CoreproxyGui) SetTableModel(m *model.SortFilterModel) {
 	g.view.RootContext().SetContextProperty("MyModel", m)
