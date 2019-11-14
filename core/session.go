@@ -26,8 +26,11 @@ func NewSession(path string) *Session {
 		Path:    path,
 		MainGui: NewBroxygui(nil, 0),
 		Config: &Config{
-			Address: "127.0.0.1",
-			Port:    8080,
+			Address:       "127.0.0.1",
+			Port:          8080,
+			ReqIntercept:  true,
+			RespIntercept: false,
+			Interceptor:   false,
 		},
 		LogC: make(chan Log),
 	}

@@ -31,12 +31,8 @@ type CoreproxyController struct {
 	model     *model.SortFilterModel
 	id        int
 
-	// interceptor
-	interceptor_status  bool
-	intercept_requests  bool
-	intercept_responses bool
-	forward_chan        chan bool
-	drop_chan           chan bool
+	forward_chan chan bool
+	drop_chan    chan bool
 	// will maintain the number of requests in queue
 	requests_queue  int
 	responses_queue int
@@ -48,24 +44,22 @@ var mutex = &sync.Mutex{}
 
 func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Session) *CoreproxyController {
 	c := &CoreproxyController{
-		Module:              proxy,
-		Gui:                 proxygui,
-		Sess:                s,
-		isRunning:           false,
-		id:                  0,
-		interceptor_status:  false,
-		intercept_requests:  true,
-		intercept_responses: true,
-		forward_chan:        make(chan bool),
-		drop_chan:           make(chan bool),
-		requests_queue:      0,
-		responses_queue:     0,
-		dropped:             make(map[int64]bool),
-		filter:              &model.Filter{},
+		Module:          proxy,
+		Gui:             proxygui,
+		Sess:            s,
+		isRunning:       false,
+		id:              0,
+		forward_chan:    make(chan bool),
+		drop_chan:       make(chan bool),
+		requests_queue:  0,
+		responses_queue: 0,
+		dropped:         make(map[int64]bool),
+		filter:          &model.Filter{},
 	}
 
 	c.model = model.NewSortFilterModel(nil)
 
+	// connects all functions
 	c.Module.OnReq = c.OnReq
 	c.Module.OnResp = c.OnResp
 
@@ -75,15 +69,45 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 	c.Gui.Toggle = c.interceptorToggle
 	c.Gui.Forward = c.forward
 	c.Gui.Drop = c.drop
-	c.Gui.ApplyFilters = c.applyFilters
-	c.Gui.ResetFilters = c.resetFilters
+	c.Gui.ApplyFilters = c.applyFilter
+	c.Gui.ResetFilters = c.resetFilter
 	// load default filters
-	c.Gui.ControllerInit = c.defaultFilter
+	c.Gui.ControllerInit = c.initUIContent
+	c.Gui.CheckReqInterception = c.checkReqInterception
+	c.Gui.CheckRespInterception = c.checkRespInterception
+	c.Gui.DownloadCAClicked = c.downloadCAClicked
 	return c
 }
 
+func (c *CoreproxyController) downloadCAClicked(b bool) {
+	c.Gui.FileSaveAs(string(caCert))
+}
+
+// init UI content
+func (c *CoreproxyController) initUIContent() {
+	c.setDefaultFilter()
+	c.Gui.ListenerLineEdit.SetText(fmt.Sprintf("%s:%d", c.Sess.Config.Address, c.Sess.Config.Port))
+	if c.Sess.Config.Interceptor {
+		c.Gui.InterceptorToggle.SetChecked(true)
+	}
+	if c.Sess.Config.ReqIntercept {
+		c.Gui.Checkbox_req_intercept.SetChecked(true)
+	}
+	if c.Sess.Config.RespIntercept {
+		c.Gui.Checkbox_resp_intercept.SetChecked(true)
+	}
+}
+
+func (c *CoreproxyController) checkReqInterception(b bool) {
+	c.Sess.Config.ReqIntercept = c.Gui.Checkbox_req_intercept.IsChecked()
+}
+
+func (c *CoreproxyController) checkRespInterception(b bool) {
+	c.Sess.Config.RespIntercept = c.Gui.Checkbox_resp_intercept.IsChecked()
+}
+
 // Filters
-func (c *CoreproxyController) defaultFilter() {
+func (c *CoreproxyController) setDefaultFilter() {
 	c.Gui.TextSearchLineEdit.SetText("")
 	c.Gui.Checkbox_status_100.SetChecked(true)
 	c.Gui.Checkbox_status_200.SetChecked(true)
@@ -94,10 +118,10 @@ func (c *CoreproxyController) defaultFilter() {
 	c.Gui.Checkbox_hide_only.SetChecked(true)
 	c.Gui.LineEdit_show_extension.SetText("asp, aspx, jsp, php, html, htm")
 	c.Gui.LineEdit_hide_extension.SetText("png, jpg, css, woff2, ico")
-	c.applyFilters(true)
+	c.applyFilter(true)
 }
 
-func (c *CoreproxyController) applyFilters(b bool) {
+func (c *CoreproxyController) applyFilter(b bool) {
 	c.filter.Search = c.Gui.TextSearchLineEdit.DisplayText()
 	var status []int
 	if c.Gui.Checkbox_status_100.IsChecked() {
@@ -133,8 +157,8 @@ func (c *CoreproxyController) applyFilters(b bool) {
 	c.model.SetFilter(c.filter)
 }
 
-func (c *CoreproxyController) resetFilters(b bool) {
-	c.defaultFilter()
+func (c *CoreproxyController) resetFilter(b bool) {
+	c.setDefaultFilter()
 }
 
 // buttons logic
@@ -158,10 +182,10 @@ func (c *CoreproxyController) selectRow(r int) {
 }
 
 func (c *CoreproxyController) interceptorToggle(b bool) {
-	if !c.interceptor_status {
-		c.interceptor_status = true
+	if !c.Sess.Config.Interceptor {
+		c.Sess.Config.Interceptor = true
 	} else {
-		c.interceptor_status = false
+		c.Sess.Config.Interceptor = false
 		if c.requests_queue > 0 || c.responses_queue > 0 {
 			tmp := c.requests_queue + c.responses_queue
 			for i := 0; i < tmp; i++ {
@@ -170,7 +194,7 @@ func (c *CoreproxyController) interceptorToggle(b bool) {
 			}
 		}
 	}
-	c.Sess.Debug(c.Module.Name(), fmt.Sprintf("Interceptor is: %v", c.interceptor_status))
+	c.Sess.Debug(c.Module.Name(), fmt.Sprintf("Interceptor is: %v", c.Sess.Config.Interceptor))
 }
 
 func (c *CoreproxyController) forward(b bool) {
@@ -221,7 +245,7 @@ func (c *CoreproxyController) startProxy(b bool) {
 			c.Sess.Err(c.Module.Name(), "Wrong input")
 		}
 	} else {
-		if c.interceptor_status {
+		if c.Sess.Config.Interceptor {
 			c.interceptorToggle(false)
 		}
 		c.Module.Stop()
@@ -252,7 +276,7 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 	}
 	// activate interceptor
 	_, dropped := c.dropped[ctx.Session]
-	if c.interceptor_status && c.intercept_responses && !dropped {
+	if c.Sess.Config.Interceptor && c.Sess.Config.RespIntercept && !dropped {
 		// if the response is nil, it means the interceptor did not change the response
 
 		r.ContentLength = int64(len(bodyBytes))
@@ -313,7 +337,7 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 	}
 
 	// activate interceptor
-	if c.interceptor_status && c.intercept_requests {
+	if c.Sess.Config.Interceptor && c.Sess.Config.ReqIntercept {
 
 		edited_req, edited_resp := c.interceptorRequestActions(r, nil, ctx)
 
@@ -369,7 +393,7 @@ func (c *CoreproxyController) interceptorRequestActions(req *http.Request, resp 
 		select {
 		// pressed forward
 		case <-c.forward_chan:
-			if !c.interceptor_status {
+			if !c.Sess.Config.Interceptor {
 				_req = req
 				_resp = nil
 				break
@@ -449,7 +473,7 @@ func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp
 		parse_error := false
 		select {
 		case <-c.forward_chan:
-			if !c.interceptor_status {
+			if !c.Sess.Config.Interceptor {
 				_resp = resp
 				break
 			}

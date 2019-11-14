@@ -8,6 +8,7 @@ import (
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/quick"
 	"github.com/therecipe/qt/widgets"
+	"os"
 	"time"
 )
 
@@ -18,14 +19,16 @@ type CoreproxyGui struct {
 
 	Sess *core.Session
 
-	ControllerInit func()
-	StartProxy     func(bool)
-	StopProxy      func()
-	RowClicked     func(int)
-	ApplyFilters   func(bool)
-	ResetFilters   func(bool)
-
-	settingsTab *widgets.QTabWidget
+	ControllerInit        func()
+	StartProxy            func(bool)
+	StopProxy             func()
+	RowClicked            func(int)
+	ApplyFilters          func(bool)
+	ResetFilters          func(bool)
+	CheckReqInterception  func(bool)
+	CheckRespInterception func(bool)
+	DownloadCAClicked     func(bool)
+	settingsTab           *widgets.QTabWidget
 
 	//_ func() `signal:"test,auto"`
 	// history tab
@@ -65,8 +68,11 @@ type CoreproxyGui struct {
 	view *quick.QQuickView
 
 	// settings tab
-	ListenerLineEdit *widgets.QLineEdit
-	StartStopBtn     *widgets.QPushButton
+	ListenerLineEdit        *widgets.QLineEdit
+	StartStopBtn            *widgets.QPushButton
+	Checkbox_req_intercept  *widgets.QCheckBox
+	Checkbox_resp_intercept *widgets.QCheckBox
+	DownloadCABtn           *widgets.QPushButton
 
 	// interceptor
 	ForwardBtn        *widgets.QPushButton
@@ -317,6 +323,31 @@ func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
 
 	vlayout1.AddLayout(gridLayout, 0)
 
+	// interception settings
+	label1 := widgets.NewQLabel(nil, 0)
+	label1.SetFont(font)
+	label1.SetText("Interception")
+	vlayout1.AddWidget(label1, 0, qtcore.Qt__AlignLeft)
+
+	g.Checkbox_req_intercept = widgets.NewQCheckBox(nil)
+	g.Checkbox_req_intercept.SetText("Intercept requests")
+	g.Checkbox_req_intercept.ConnectClicked(g.CheckReqInterception)
+	vlayout1.AddWidget(g.Checkbox_req_intercept, 0, qtcore.Qt__AlignLeft)
+
+	g.Checkbox_resp_intercept = widgets.NewQCheckBox(nil)
+	g.Checkbox_resp_intercept.SetText("Intercept responses")
+	g.Checkbox_resp_intercept.ConnectClicked(g.CheckRespInterception)
+	vlayout1.AddWidget(g.Checkbox_resp_intercept, 0, qtcore.Qt__AlignLeft)
+
+	label_ca := widgets.NewQLabel(nil, 0)
+	label_ca.SetText("Certificate Authority")
+	label_ca.SetFont(font)
+	vlayout1.AddWidget(label_ca, 0, qtcore.Qt__AlignLeft)
+
+	g.DownloadCABtn = widgets.NewQPushButton2("Download CA certificate", nil)
+	g.DownloadCABtn.ConnectClicked(g.DownloadCAClicked)
+	vlayout1.AddWidget(g.DownloadCABtn, 0, qtcore.Qt__AlignLeft)
+
 	spacerItem1 := widgets.NewQSpacerItem(20, 40, widgets.QSizePolicy__Minimum, widgets.QSizePolicy__Expanding)
 	vlayout1.AddItem(spacerItem1)
 
@@ -411,6 +442,29 @@ func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
 	g.ControllerInit()
 
 	return g.coreProxyGui
+}
+
+func (t *CoreproxyGui) FileSaveAs(s string) bool {
+	var fileDialog = widgets.NewQFileDialog2(nil, "Save as...", "", "")
+	fileDialog.SetAcceptMode(widgets.QFileDialog__AcceptSave)
+	var mimeTypes = []string{"application/x-x509-ca-cert"}
+	fileDialog.SetMimeTypeFilters(mimeTypes)
+	fileDialog.SetDefaultSuffix("der")
+	if fileDialog.Exec() != int(widgets.QDialog__Accepted) {
+		return false
+	}
+	var fn = fileDialog.SelectedFiles()[0]
+
+	f, err := os.Create(fn)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	_, err1 := f.WriteString(s)
+	if err1 != nil {
+		return false
+	}
+	return true
 }
 
 //func (g *CoreproxyGui) GetModuleGui2() widgets.QWidget_ITF {
