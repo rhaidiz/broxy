@@ -1,6 +1,7 @@
 package repeater
 
 import (
+	"crypto/tls"
 	"github.com/rhaidiz/broxy/core"
 	"net/http"
 )
@@ -15,6 +16,8 @@ type Repeater struct {
 }
 
 func NewRepeater(s *core.Session) *Repeater {
+	// disable x509 certificate check
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	return &Repeater{Sess: s, client: &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse

@@ -9,9 +9,9 @@ import (
 
 func main() {
 
-	widgets.NewQApplication(len(os.Args), os.Args)
+	qa := widgets.NewQApplication(len(os.Args), os.Args)
 
-	s := core.NewSession("~/Desktop")
+	s := core.NewSession("~/Desktop", qa)
 	//Load All modules
 	modules.LoadModules(s)
 

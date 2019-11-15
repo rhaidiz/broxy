@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/therecipe/qt/widgets"
 	"time"
 )
 
@@ -19,9 +20,11 @@ type Session struct {
 	Config  *Config
 
 	LogC chan Log
+
+	QApp *widgets.QApplication
 }
 
-func NewSession(path string) *Session {
+func NewSession(path string, qa *widgets.QApplication) *Session {
 	return &Session{
 		Path:    path,
 		MainGui: NewBroxygui(nil, 0),
@@ -33,6 +36,7 @@ func NewSession(path string) *Session {
 			Interceptor:   false,
 		},
 		LogC: make(chan Log),
+		QApp: qa,
 	}
 }
 

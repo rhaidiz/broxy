@@ -45,8 +45,42 @@ Item {
 						 selection.clear()
 						 selection.select(tableview.currentRow)
 				}
+
+
 	
 				model: MyModel
+
+				 rowDelegate: 
+				 Rectangle{
+				 color: styleData.selected ? "#448" : "transparent"
+								 
+                 MouseArea {
+                      id: mouseArea
+                      acceptedButtons: Qt.RightButton
+                      anchors.fill: parent
+                      propagateComposedEvents: true
+                       onClicked: {
+				 							tableview.selection.clear();
+				 							tableview.currentRow = styleData.row
+    		 							tableview.selection.select(styleData.row);
+                         mouse.accepted = false
+											 menu.popup()
+                       }
+                  }
+									Menu {
+    							    id: menu
+											 Instantiator {
+    										   model: MenuItems
+    										   MenuItem {
+    										      text: model.display
+															onTriggered: tableBridge.rightItemClicked(model.display, tableview.currentRow)
+    										   }
+    										onObjectAdded: menu.insertItem(index, object)
+    										onObjectRemoved: menu.removeItem(object)
+												}
+    							}
+				 }
+				
 				
 				TableViewColumn {
 					role: "ID"

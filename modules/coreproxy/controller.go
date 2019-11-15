@@ -18,6 +18,7 @@ import (
 	"github.com/rhaidiz/broxy/modules/coreproxy/model"
 	"github.com/rhaidiz/broxy/util"
 	qtcore "github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/gui"
 	"io/ioutil"
 )
 
@@ -76,7 +77,22 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 	c.Gui.CheckReqInterception = c.checkReqInterception
 	c.Gui.CheckRespInterception = c.checkRespInterception
 	c.Gui.DownloadCAClicked = c.downloadCAClicked
+	c.Gui.RightItemClicked = c.rightItemClicked
 	return c
+}
+
+func (c *CoreproxyController) rightItemClicked(s string, r int) {
+	clipboard := c.Sess.QApp.Clipboard()
+	actual_row := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
+	req, _, _, _ := c.model.Custom.GetReqResp(actual_row - 1)
+	if s == CopyURLLabel {
+		clipboard.SetText(fmt.Sprintf("%s://%s%s", req.Schema, req.Host, req.Path), gui.QClipboard__Clipboard)
+	} else if s == CopyBaseURLLabel {
+		clipboard.SetText(fmt.Sprintf("%s://%s", req.Schema, req.Host), gui.QClipboard__Clipboard)
+	} else if s == SendToRepeaterLabel {
+		// TODO: to implement this part, I need some sort of inter-modules messaging delivery system
+		c.Sess.Info(c.Module.Name(), "Send to repeater not yet implemented")
+	}
 }
 
 func (c *CoreproxyController) downloadCAClicked(b bool) {

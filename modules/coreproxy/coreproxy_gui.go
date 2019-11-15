@@ -12,6 +12,12 @@ import (
 	"time"
 )
 
+const (
+	CopyURLLabel        = "Copy URL"
+	CopyBaseURLLabel    = "Copy base URL"
+	SendToRepeaterLabel = "Send to repeater"
+)
+
 type CoreproxyGui struct {
 	core.GuiModule
 
@@ -28,6 +34,7 @@ type CoreproxyGui struct {
 	CheckReqInterception  func(bool)
 	CheckRespInterception func(bool)
 	DownloadCAClicked     func(bool)
+	RightItemClicked      func(string, int)
 	settingsTab           *widgets.QTabWidget
 
 	//_ func() `signal:"test,auto"`
@@ -55,6 +62,7 @@ type CoreproxyGui struct {
 	LineEdit_hide_extension *widgets.QLineEdit
 	Checkbox_show_only      *widgets.QCheckBox
 	Checkbox_hide_only      *widgets.QCheckBox
+	RightItemLabels         []string
 
 	coreProxyGui *widgets.QTabWidget
 
@@ -93,7 +101,8 @@ type CoreproxyGui struct {
 type TableBridge struct {
 	qtcore.QObject
 
-	_ func(int) `signal:"clicked,auto"`
+	_ func(int)         `signal:"clicked,auto"`
+	_ func(string, int) `signal:"rightItemClicked,auto"`
 
 	coreGui *CoreproxyGui
 }
@@ -108,11 +117,16 @@ func (t *TableBridge) clicked(r int) {
 	}
 }
 
+func (t *TableBridge) rightItemClicked(l string, r int) {
+	t.coreGui.RightItemClicked(l, r)
+}
+
 func NewCoreproxyGui(s *core.Session) *CoreproxyGui {
 	return &CoreproxyGui{
-		Sess:        s,
-		tableBridge: NewTableBridge(nil),
-		view:        quick.NewQQuickView(nil),
+		RightItemLabels: []string{CopyURLLabel, CopyBaseURLLabel, SendToRepeaterLabel},
+		Sess:            s,
+		tableBridge:     NewTableBridge(nil),
+		view:            quick.NewQQuickView(nil),
 	}
 }
 
@@ -354,7 +368,14 @@ func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
 	return scrollArea
 }
 
+func (g *CoreproxyGui) SetRightClickMenu() {
+	m := qtcore.NewQStringListModel2(g.RightItemLabels, nil)
+	g.view.RootContext().SetContextProperty("MenuItems", m)
+}
+
 func (g *CoreproxyGui) SetTableModel(m *model.SortFilterModel) {
+	//TODO: move the SetRightClickMenu somewhere that makes sense
+	g.SetRightClickMenu()
 	g.view.RootContext().SetContextProperty("MyModel", m)
 	g.tableBridge.setParent(g)
 	g.view.RootContext().SetContextProperty("tableBridge", g.tableBridge)
