@@ -45,7 +45,8 @@ func (c *RepeaterController) GoClick(b bool) {
 	}
 
 	url, err := url.Parse(c.Gui.HostLine.Text())
-	req.URL = url
+	req.URL.Scheme = url.Scheme
+	req.URL.Host = url.Host
 	req.RequestURI = ""
 
 	go func() {
