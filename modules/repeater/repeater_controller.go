@@ -48,11 +48,10 @@ func (c *RepeaterController) ExecCommand(m string, args ...interface{}) {
 	}
 }
 
-func (c *RepeaterController) GoClick(b bool) {
+func (c *RepeaterController) GoClick(t *RepeaterTab) {
 	c.Sess.Debug(c.Module.Name(), "Go pressed")
-
-	r_raw := util.NormalizeRequest(c.Gui.RequestEditor.ToPlainText())
-	c.Gui.RequestEditor.SetPlainText(r_raw)
+	r_raw := util.NormalizeRequest(t.RequestEditor.ToPlainText())
+	t.RequestEditor.SetPlainText(r_raw)
 
 	r := strings.NewReader(r_raw)
 	buf := bufio.NewReader(r)
@@ -66,7 +65,7 @@ func (c *RepeaterController) GoClick(b bool) {
 		c.Sess.Debug(c.Module.Name(), req.Host)
 	}
 
-	url, err := url.Parse(c.Gui.HostLine.Text())
+	url, err := url.Parse(t.HostLine.Text())
 	req.URL.Scheme = url.Scheme
 	req.URL.Host = url.Host
 	req.RequestURI = ""
@@ -77,7 +76,7 @@ func (c *RepeaterController) GoClick(b bool) {
 		if err != nil {
 			c.Sess.Err(c.Module.Name(), fmt.Sprintf("RunRequest %v", err))
 		} else {
-			c.Gui.ResponseEditor.SetPlainText(util.ResponseToString(resp, false))
+			t.ResponseEditor.SetPlainText(util.ResponseToString(resp, false))
 		}
 	}()
 }
