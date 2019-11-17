@@ -4,9 +4,9 @@ import (
 	"github.com/rhaidiz/broxy/core"
 )
 
-func LoadLogModule(s *core.Session) (*Log, *LogGui) {
+func LoadLogModule(s *core.Session) *LogController {
 	m := NewLog(s)
 	g := NewLogGui(s)
-	NewLogController(m, g, s)
-	return m, g
+	c := NewLogController(m, g, s)
+	return c
 }

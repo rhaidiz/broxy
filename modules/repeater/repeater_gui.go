@@ -51,6 +51,12 @@ func (g *RepeaterGui) changedTab(i int) {
 	}
 }
 
+func (g *RepeaterGui) AddNewTab(host string, request string) {
+	g.tabNum = g.tabNum + 1
+	g.repeaterTabs.InsertTab(g.repeaterTabs.Count()-1, g.NewTab(host, request), host)
+	g.repeaterTabs.SetCurrentIndex(g.repeaterTabs.Count() - 2)
+}
+
 func (g *RepeaterGui) NewTab(host string, request string) widgets.QWidget_ITF {
 	mainWidget := widgets.NewQWidget(nil, 0)
 	vlayout := widgets.NewQVBoxLayout()

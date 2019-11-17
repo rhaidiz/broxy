@@ -17,3 +17,10 @@ type GuiModule interface {
 	GetModuleGui() widgets.QWidget_ITF
 	Name() string
 }
+
+type ControllerModule interface {
+	ExecCommand(string, ...interface{})
+	GetModule() Module
+	GetGui() GuiModule
+	Name() string
+}

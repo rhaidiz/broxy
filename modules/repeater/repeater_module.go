@@ -4,9 +4,9 @@ import (
 	"github.com/rhaidiz/broxy/core"
 )
 
-func LoadRepeaterModule(s *core.Session) (*Repeater, *RepeaterGui) {
+func LoadRepeaterModule(s *core.Session) *RepeaterController {
 	m := NewRepeater(s)
 	g := NewRepeaterGui(s)
-	NewRepeaterController(m, g, s)
-	return m, g
+	c := NewRepeaterController(m, g, s)
+	return c
 }

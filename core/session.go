@@ -11,7 +11,7 @@ type Session struct {
 	Path string
 
 	// List of modules
-	Modules []Module
+	Modules []ControllerModule
 
 	// Logs
 	Logs []Log
@@ -45,9 +45,18 @@ func LoadSession(path string) *Session {
 	return nil
 }
 
-func (s *Session) LoadModule(m Module, g GuiModule) {
-	s.Modules = append(s.Modules, m)
-	s.MainGui.AddGuiModule(g)
+func (s *Session) LoadModule(c ControllerModule) {
+	s.Modules = append(s.Modules, c)
+	s.MainGui.AddGuiModule(c.GetGui())
+}
+
+func (s *Session) Exec(m string, f string, a ...interface{}) {
+	print(m)
+	for _, mod := range s.Modules {
+		if m == mod.Name() {
+			mod.ExecCommand(f, a...)
+		}
+	}
 }
 
 func (s *Session) Info(mod string, message string) {

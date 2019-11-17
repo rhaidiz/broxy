@@ -23,6 +23,7 @@ import (
 )
 
 type CoreproxyController struct {
+	core.ControllerModule
 	Module *Coreproxy
 	Gui    *CoreproxyGui
 	Sess   *core.Session
@@ -81,6 +82,22 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 	return c
 }
 
+func (c *CoreproxyController) GetGui() core.GuiModule {
+	return c.Gui
+}
+
+func (c *CoreproxyController) Name() string {
+	return "coreproxy"
+}
+
+func (c *CoreproxyController) GetModule() core.Module {
+	return c.Module
+}
+
+func (c *CoreproxyController) ExecCommand(m string, args ...interface{}) {
+
+}
+
 func (c *CoreproxyController) rightItemClicked(s string, r int) {
 	clipboard := c.Sess.QApp.Clipboard()
 	actual_row := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
@@ -90,8 +107,8 @@ func (c *CoreproxyController) rightItemClicked(s string, r int) {
 	} else if s == CopyBaseURLLabel {
 		clipboard.SetText(fmt.Sprintf("%s://%s", req.Schema, req.Host), gui.QClipboard__Clipboard)
 	} else if s == SendToRepeaterLabel {
-		// TODO: to implement this part, I need some sort of inter-modules messaging delivery system
-		c.Sess.Info(c.Module.Name(), "Send to repeater not yet implemented")
+		// FIXME: I **really** don't like this
+		c.Sess.Exec("repeater", "send-to", req)
 	}
 }
 

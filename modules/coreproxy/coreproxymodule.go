@@ -4,9 +4,9 @@ import (
 	"github.com/rhaidiz/broxy/core"
 )
 
-func LoadCoreProxyModule(s *core.Session) (*Coreproxy, *CoreproxyGui) {
+func LoadCoreProxyModule(s *core.Session) *CoreproxyController {
 	m := NewCoreProxy(s)
 	g := NewCoreproxyGui(s)
-	NewCoreproxyController(m, g, s)
-	return m, g
+	c := NewCoreproxyController(m, g, s)
+	return c
 }

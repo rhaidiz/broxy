@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/rhaidiz/broxy/core"
+	"github.com/rhaidiz/broxy/modules/coreproxy/model"
 	"github.com/rhaidiz/broxy/util"
 	"net/http"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 )
 
 type RepeaterController struct {
+	core.ControllerModule
 	Module *Repeater
 	Gui    *RepeaterGui
 	Sess   *core.Session
@@ -24,6 +26,26 @@ func NewRepeaterController(module *Repeater, gui *RepeaterGui, s *core.Session) 
 	}
 	c.Gui.GoClick = c.GoClick
 	return c
+}
+
+func (c *RepeaterController) GetGui() core.GuiModule {
+	return c.Gui
+}
+
+func (c *RepeaterController) GetModule() core.Module {
+	return c.Module
+}
+
+func (c *RepeaterController) Name() string {
+	return "repeater"
+}
+
+func (c *RepeaterController) ExecCommand(m string, args ...interface{}) {
+	if m == "send-to" {
+		r := args[0].(*model.Request)
+		print(r.Host)
+		c.Gui.AddNewTab(fmt.Sprintf("%s://%s", r.Schema, r.Host), fmt.Sprintf("%s\n", r.ToString()))
+	}
 }
 
 func (c *RepeaterController) GoClick(b bool) {

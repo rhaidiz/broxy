@@ -7,6 +7,7 @@ import (
 )
 
 type LogController struct {
+	core.ControllerModule
 	Module *Log
 	Gui    *LogGui
 	Sess   *core.Session
@@ -28,6 +29,22 @@ func NewLogController(m *Log, g *LogGui, s *core.Session) *LogController {
 	c.Gui.SetTableModel(c.modelSort)
 	go c.logEvent()
 	return c
+}
+
+func (c *LogController) GetGui() core.GuiModule {
+	return c.Gui
+}
+
+func (c *LogController) GetModule() core.Module {
+	return c.Module
+}
+
+func (c *LogController) Name() string {
+	return "log"
+}
+
+func (c *LogController) ExecCommand(m string, args ...interface{}) {
+
 }
 
 func (c *LogController) logEvent() {

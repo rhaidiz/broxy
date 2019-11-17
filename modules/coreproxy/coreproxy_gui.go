@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	CopyURLLabel     = "Copy URL"
-	CopyBaseURLLabel = "Copy base URL"
+	CopyURLLabel        = "Copy URL"
+	CopyBaseURLLabel    = "Copy base URL"
+	SendToRepeaterLabel = "Send to Repeater"
 )
 
 type CoreproxyGui struct {
@@ -122,7 +123,7 @@ func (t *TableBridge) rightItemClicked(l string, r int) {
 
 func NewCoreproxyGui(s *core.Session) *CoreproxyGui {
 	return &CoreproxyGui{
-		RightItemLabels: []string{CopyURLLabel, CopyBaseURLLabel},
+		RightItemLabels: []string{CopyURLLabel, CopyBaseURLLabel, SendToRepeaterLabel},
 		Sess:            s,
 		tableBridge:     NewTableBridge(nil),
 		view:            quick.NewQQuickView(nil),
