@@ -89,9 +89,6 @@ func (c *CoreproxyController) rightItemClicked(s string, r int) {
 		clipboard.SetText(fmt.Sprintf("%s://%s%s", req.Schema, req.Host, req.Path), gui.QClipboard__Clipboard)
 	} else if s == CopyBaseURLLabel {
 		clipboard.SetText(fmt.Sprintf("%s://%s", req.Schema, req.Host), gui.QClipboard__Clipboard)
-	} else if s == SendToRepeaterLabel {
-		// TODO: to implement this part, I need some sort of inter-modules messaging delivery system
-		c.Sess.Info(c.Module.Name(), "Send to repeater not yet implemented")
 	}
 }
 
