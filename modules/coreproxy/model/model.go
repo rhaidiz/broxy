@@ -215,7 +215,7 @@ func (m *CustomTableModel) addItem(item *HttpItem, i int64) {
 	m.hashMap[i] = item
 	m.modelData = append(m.modelData, *item)
 	m.EndInsertRows()
-	fmt.Println("add item %d", len(m.modelData))
+	fmt.Println("add item ", len(m.modelData))
 }
 
 func (m *CustomTableModel) editItem(item *HttpItem, i int64) {

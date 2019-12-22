@@ -253,6 +253,7 @@ func (c *CoreproxyController) drop(b bool) {
 }
 
 func (c *CoreproxyController) startProxy(b bool) {
+
 	if !c.isRunning {
 		// Start and stop the proxy
 		ip_port_regxp := "^((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)):(6553[0-5]|655[0-2][0-9]|65[0-4][0-9][0-9]|6[0-4][0-9][0-9][0-9]|[1-5]?[0-9]?[0-9]?[0-9]?[0-9])?$"
@@ -407,6 +408,7 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 		}
 
 	}
+	fmt.Println("got a request:", c.id)
 
 	// add the request to the history only at the end
 	c.model.Custom.AddItem(http_item, ctx.Session)

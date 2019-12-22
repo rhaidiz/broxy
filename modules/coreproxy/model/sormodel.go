@@ -61,7 +61,7 @@ func (m *SortFilterModel) filterAcceptsRow(sourceRow int, sourceParent *core.QMo
 			break
 		}
 	}
-	if !next {
+	if resp != nil && !next {
 		return false
 	}
 
