@@ -159,6 +159,7 @@ type CustomTableModel struct {
 
 	_ func(item *HttpItem, i int64) `signal:"addItem,auto"`
 	_ func(item *HttpItem, i int64) `signal:editItem,auto"`
+	_ func()                        `signal:clearHistory,auto"`
 }
 
 var mutex = &sync.Mutex{}
@@ -197,6 +198,16 @@ func (m *CustomTableModel) AddReq(r *http.Request, i int64) {
 	//m.hashMap[i] = HttpItem{Req: r, ReqBody: bodyBytes}
 }
 
+func (m *CustomTableModel) clearHistory() {
+	mutex.Lock()
+	defer mutex.Unlock()
+	m.BeginRemoveRows(core.NewQModelIndex(), 0, len(m.modelData))
+	m.modelData = []HttpItem{}
+	m.hashMap = make(map[int64]*HttpItem)
+	m.EndRemoveRows()
+	fmt.Println("done %d", len(m.modelData))
+}
+
 func (m *CustomTableModel) addItem(item *HttpItem, i int64) {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -204,6 +215,7 @@ func (m *CustomTableModel) addItem(item *HttpItem, i int64) {
 	m.hashMap[i] = item
 	m.modelData = append(m.modelData, *item)
 	m.EndInsertRows()
+	fmt.Println("add item %d", len(m.modelData))
 }
 
 func (m *CustomTableModel) editItem(item *HttpItem, i int64) {

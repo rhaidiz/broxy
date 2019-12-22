@@ -109,6 +109,9 @@ func (c *CoreproxyController) rightItemClicked(s string, r int) {
 	} else if s == SendToRepeaterLabel {
 		// FIXME: I **really** don't like this
 		c.Sess.Exec("repeater", "send-to", req)
+	} else if s == ClearHistoryLabel {
+		c.model.Custom.ClearHistory()
+		c.id = 0
 	}
 }
 
@@ -199,6 +202,7 @@ func (c *CoreproxyController) resetFilter(b bool) {
 func (c *CoreproxyController) selectRow(r int) {
 	c.Gui.HideAllTabs()
 	actual_row := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
+	fmt.Println("Actual row", actual_row)
 	req, edited_req, resp, edited_resp := c.model.Custom.GetReqResp(actual_row - 1)
 	if req != nil {
 		c.Gui.ShowReqTab(req.ToString())
