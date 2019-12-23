@@ -9,7 +9,7 @@ import (
 	"regexp"
 
 	"github.com/elazarl/goproxy"
-	_ "github.com/elazarl/goproxy/transport"
+	"github.com/elazarl/goproxy/transport"
 	"github.com/rhaidiz/broxy/core"
 )
 
@@ -27,7 +27,7 @@ type Coreproxy struct {
 	OnReq   func(*http.Request, *goproxy.ProxyCtx) (*http.Request, *http.Response)
 	OnResp  func(*http.Response, *goproxy.ProxyCtx) *http.Response
 	status  bool
-	//tr      *transport.Transport
+	tr      *transport.Transport
 	//History			map[int64]*model.HItem
 	//History2 []model.HItem
 }
@@ -48,7 +48,7 @@ func NewCoreProxy(s *core.Session) *Coreproxy {
 		//OnResp: func(*http.Response, *goproxy.ProxyCtx) {},
 		Sess:   s,
 		status: false,
-		//tr:      &transport.Transport{Proxy: transport.ProxyFromEnvironment},
+		tr:     &transport.Transport{Proxy: transport.ProxyFromEnvironment, TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 
 		//History: make(map[int64]*model.HItem),
 		//History2: make([]model.HItem, 0),
@@ -131,7 +131,7 @@ func (p *Coreproxy) onReqDef(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Requ
 	//	ctx.UserData, resp, err = p.tr.DetailedRoundTrip(req)
 	//	return
 	//})
-	p.Req = p.Req + 1
+	//p.Req = p.Req + 1
 	// save the request in the history
 	//mutex.Lock()
 	//defer mutex.Unlock()
@@ -139,7 +139,10 @@ func (p *Coreproxy) onReqDef(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Requ
 	//p.History2 = append(p.History2, model.HItem{Method: r.Method})
 	//fmt.Println("Resp: ", p.Req)
 	r1, rsp := p.OnReq(r, ctx)
-
+	ctx.RoundTripper = goproxy.RoundTripperFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (resp *http.Response, err error) {
+		ctx.UserData, resp, err = p.tr.DetailedRoundTrip(req)
+		return
+	})
 	return r1, rsp
 }
 
@@ -147,7 +150,7 @@ func (p *Coreproxy) onReqDef(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Requ
 func (p *Coreproxy) onRespDef(r *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 	if r != nil {
 		// count the responses
-		p.Resp = p.Resp + 1
+		//p.Resp = p.Resp + 1
 		// save the response in the history
 		//mutex.Lock()
 		//defer mutex.Unlock()

@@ -295,6 +295,7 @@ func (c *CoreproxyController) startProxy(b bool) {
 
 // Executed when a response arrives
 func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
+	println("response")
 
 	http_item := model.NewHttpItem(nil)
 
@@ -310,7 +311,7 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 		Body:          bodyBytes,
 		Proto:         r.Proto,
 		ContentLength: int64(len(bodyBytes)),
-		Headers:       r.Header,
+		Headers:       cloneHeaders(r.Header),
 	}
 	// activate interceptor
 	_, dropped := c.dropped[ctx.Session]
@@ -330,7 +331,7 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 				Proto:         edited_resp.Proto,
 				Body:          edited_bodyBytes,
 				ContentLength: int64(len(edited_bodyBytes)),
-				Headers:       edited_resp.Header,
+				Headers:       cloneHeaders(edited_resp.Header),
 			}
 			r = edited_resp
 		}
@@ -369,7 +370,7 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 		Body:          bodyBytes,
 		Host:          r.Host,
 		ContentLength: r.ContentLength,
-		Headers:       r.Header,
+		Headers:       cloneHeaders(r.Header),
 		Proto:         r.Proto,
 		Extension:     ext,
 	}
@@ -398,7 +399,7 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 				Body:          edited_bodyBytes,
 				Host:          edited_req.Host,
 				ContentLength: edited_req.ContentLength,
-				Headers:       edited_req.Header,
+				Headers:       cloneHeaders(edited_req.Header),
 				Proto:         edited_req.Proto,
 				Extension:     ext,
 			}
@@ -586,4 +587,14 @@ func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp
 	mutex.Unlock()
 
 	return _resp
+}
+
+func cloneHeaders(src http.Header) http.Header {
+	dst := http.Header{}
+	for k, vs := range src {
+		for _, v := range vs {
+			dst.Add(k, v)
+		}
+	}
+	return dst
 }

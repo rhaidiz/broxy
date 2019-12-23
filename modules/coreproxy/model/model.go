@@ -15,7 +15,7 @@ type Request struct {
 	Path          string
 	Schema        string
 	Host          string
-	Headers       map[string][]string
+	Headers       http.Header
 	ContentLength int64
 	Body          []byte
 	Extension     string
@@ -54,7 +54,7 @@ type Response struct {
 	Proto         string
 	Status        string
 	StatusCode    int
-	Headers       map[string][]string
+	Headers       http.Header
 	ContentLength int64
 	Body          []byte
 }
