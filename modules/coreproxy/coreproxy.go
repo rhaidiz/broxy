@@ -28,11 +28,7 @@ type Coreproxy struct {
 	OnResp  func(*http.Response, *goproxy.ProxyCtx) *http.Response
 	status  bool
 	tr      *transport.Transport
-	//History			map[int64]*model.HItem
-	//History2 []model.HItem
 }
-
-//var mutex = &sync.Mutex{}
 
 // Create a new proxy
 func NewCoreProxy(s *core.Session) *Coreproxy {
@@ -44,14 +40,9 @@ func NewCoreProxy(s *core.Session) *Coreproxy {
 		Proxyh:  goproxy.NewProxyHttpServer(),
 		Req:     0,
 		Resp:    0,
-		//OnReq:   func(*http.Request, *goproxy.ProxyCtx) *http.Request {},
-		//OnResp: func(*http.Response, *goproxy.ProxyCtx) {},
-		Sess:   s,
-		status: false,
-		tr:     &transport.Transport{Proxy: transport.ProxyFromEnvironment, TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
-
-		//History: make(map[int64]*model.HItem),
-		//History2: make([]model.HItem, 0),
+		Sess:    s,
+		status:  false,
+		tr:      &transport.Transport{Proxy: transport.ProxyFromEnvironment, TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 	}
 
 	// this is the golang HTTP server with its handler
@@ -118,26 +109,9 @@ func (p *Coreproxy) Start() error {
 func (p *Coreproxy) Stop() error {
 
 	return p.Srv.Shutdown(context.Background())
-	//if e := p.Srv.Shutdown(context.Background()); e != nil {
-	//		// Error from closing listeners, or context timeout:
-	//		fmt.Printf("HTTP server Shutdown: %v", e)
-	//}
-	//fmt.Printf("Stopping %s:%d\n", p.Address, p.Port)
 }
 
 func (p *Coreproxy) onReqDef(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-	// count the requests
-	//ctx.RoundTripper = goproxy.RoundTripperFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (resp *http.Response, err error) {
-	//	ctx.UserData, resp, err = p.tr.DetailedRoundTrip(req)
-	//	return
-	//})
-	//p.Req = p.Req + 1
-	// save the request in the history
-	//mutex.Lock()
-	//defer mutex.Unlock()
-	//p.History[ctx.Session] = &HItem{Req: r}
-	//p.History2 = append(p.History2, model.HItem{Method: r.Method})
-	//fmt.Println("Resp: ", p.Req)
 	r1, rsp := p.OnReq(r, ctx)
 	ctx.RoundTripper = goproxy.RoundTripperFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (resp *http.Response, err error) {
 		ctx.UserData, resp, err = p.tr.DetailedRoundTrip(req)
@@ -149,13 +123,6 @@ func (p *Coreproxy) onReqDef(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Requ
 // Run when a response is received
 func (p *Coreproxy) onRespDef(r *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 	if r != nil {
-		// count the responses
-		//p.Resp = p.Resp + 1
-		// save the response in the history
-		//mutex.Lock()
-		//defer mutex.Unlock()
-		//p.History[ctx.Session].Resp = r
-		//fmt.Println("Req: ", p.Resp)
 		r = p.OnResp(r, ctx)
 	}
 

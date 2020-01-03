@@ -1,13 +1,10 @@
 package coreproxy
 
 import (
-	"bufio"
 	"bytes"
-	"encoding/hex"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
-	_ "net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -16,10 +13,8 @@ import (
 	"github.com/elazarl/goproxy"
 	"github.com/rhaidiz/broxy/core"
 	"github.com/rhaidiz/broxy/modules/coreproxy/model"
-	"github.com/rhaidiz/broxy/util"
 	qtcore "github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
-	"io/ioutil"
 )
 
 type CoreproxyController struct {
@@ -60,11 +55,8 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 	}
 
 	c.model = model.NewSortFilterModel(nil)
-
-	// connects all functions
-	c.Module.OnReq = c.OnReq
-	c.Module.OnResp = c.OnResp
-
+	c.Module.OnReq = c.onReq
+	c.Module.OnResp = c.onResp
 	c.Gui.SetTableModel(c.model)
 	c.Gui.StartProxy = c.startProxy
 	c.Gui.RowClicked = c.selectRow
@@ -73,7 +65,6 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 	c.Gui.Drop = c.drop
 	c.Gui.ApplyFilters = c.applyFilter
 	c.Gui.ResetFilters = c.resetFilter
-	// load default filters
 	c.Gui.ControllerInit = c.initUIContent
 	c.Gui.CheckReqInterception = c.checkReqInterception
 	c.Gui.CheckRespInterception = c.checkRespInterception
@@ -98,6 +89,21 @@ func (c *CoreproxyController) ExecCommand(m string, args ...interface{}) {
 
 }
 
+// init UI content
+func (c *CoreproxyController) initUIContent() {
+	c.setDefaultFilter()
+	c.Gui.ListenerLineEdit.SetText(fmt.Sprintf("%s:%d", c.Sess.Config.Address, c.Sess.Config.Port))
+	if c.Sess.Config.Interceptor {
+		c.Gui.InterceptorToggleButton.SetChecked(true)
+	}
+	if c.Sess.Config.ReqIntercept {
+		c.Gui.ReqInterceptCheckBox.SetChecked(true)
+	}
+	if c.Sess.Config.RespIntercept {
+		c.Gui.RespInterceptCheckBox.SetChecked(true)
+	}
+}
+
 func (c *CoreproxyController) rightItemClicked(s string, r int) {
 	clipboard := c.Sess.QApp.Clipboard()
 	actual_row := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
@@ -119,74 +125,59 @@ func (c *CoreproxyController) downloadCAClicked(b bool) {
 	c.Gui.FileSaveAs(string(caCert))
 }
 
-// init UI content
-func (c *CoreproxyController) initUIContent() {
-	c.setDefaultFilter()
-	c.Gui.ListenerLineEdit.SetText(fmt.Sprintf("%s:%d", c.Sess.Config.Address, c.Sess.Config.Port))
-	if c.Sess.Config.Interceptor {
-		c.Gui.InterceptorToggle.SetChecked(true)
-	}
-	if c.Sess.Config.ReqIntercept {
-		c.Gui.Checkbox_req_intercept.SetChecked(true)
-	}
-	if c.Sess.Config.RespIntercept {
-		c.Gui.Checkbox_resp_intercept.SetChecked(true)
-	}
-}
-
 func (c *CoreproxyController) checkReqInterception(b bool) {
-	c.Sess.Config.ReqIntercept = c.Gui.Checkbox_req_intercept.IsChecked()
+	c.Sess.Config.ReqIntercept = c.Gui.ReqInterceptCheckBox.IsChecked()
 }
 
 func (c *CoreproxyController) checkRespInterception(b bool) {
-	c.Sess.Config.RespIntercept = c.Gui.Checkbox_resp_intercept.IsChecked()
+	c.Sess.Config.RespIntercept = c.Gui.RespInterceptCheckBox.IsChecked()
 }
 
-// Filters
+// Defaut history filters
 func (c *CoreproxyController) setDefaultFilter() {
 	c.Gui.TextSearchLineEdit.SetText("")
-	c.Gui.Checkbox_status_100.SetChecked(true)
-	c.Gui.Checkbox_status_200.SetChecked(true)
-	c.Gui.Checkbox_status_300.SetChecked(true)
-	c.Gui.Checkbox_status_400.SetChecked(true)
-	c.Gui.Checkbox_status_500.SetChecked(true)
-	c.Gui.Checkbox_show_only.SetChecked(false)
-	c.Gui.Checkbox_hide_only.SetChecked(true)
-	c.Gui.LineEdit_show_extension.SetText("asp, aspx, jsp, php, html, htm")
-	c.Gui.LineEdit_hide_extension.SetText("png, jpg, css, woff2, ico")
+	c.Gui.S100CheckBox.SetChecked(true)
+	c.Gui.S200CheckBox.SetChecked(true)
+	c.Gui.S300CheckBox.SetChecked(true)
+	c.Gui.S400CheckBox.SetChecked(true)
+	c.Gui.S500CheckBox.SetChecked(true)
+	c.Gui.ShowOnlyCheckBox.SetChecked(false)
+	c.Gui.HideOnlyCheckBox.SetChecked(true)
+	c.Gui.ShowExtensionLineEdit.SetText("asp, aspx, jsp, php, html, htm")
+	c.Gui.HideExtensionLineEdit.SetText("png, jpg, css, woff2, ico")
 	c.applyFilter(true)
 }
 
 func (c *CoreproxyController) applyFilter(b bool) {
 	c.filter.Search = c.Gui.TextSearchLineEdit.DisplayText()
 	var status []int
-	if c.Gui.Checkbox_status_100.IsChecked() {
+	if c.Gui.S100CheckBox.IsChecked() {
 		status = append(status, 100)
 	}
-	if c.Gui.Checkbox_status_200.IsChecked() {
+	if c.Gui.S200CheckBox.IsChecked() {
 		status = append(status, 200)
 	}
-	if c.Gui.Checkbox_status_300.IsChecked() {
+	if c.Gui.S300CheckBox.IsChecked() {
 		status = append(status, 300)
 	}
-	if c.Gui.Checkbox_status_400.IsChecked() {
+	if c.Gui.S400CheckBox.IsChecked() {
 		status = append(status, 400)
 	}
-	if c.Gui.Checkbox_status_500.IsChecked() {
+	if c.Gui.S500CheckBox.IsChecked() {
 		status = append(status, 500)
 	}
 	// this also looks bad, creating a new status each time and replacing it ... bleah ...
 	//IMP: make me pretier
 	c.filter.StatusCode = status
 	c.filter.Show_ext = make(map[string]bool)
-	if c.Gui.Checkbox_show_only.IsChecked() {
-		for _, e := range strings.Split(strings.Replace(c.Gui.LineEdit_show_extension.DisplayText(), " ", "", -1), ",") {
+	if c.Gui.ShowOnlyCheckBox.IsChecked() {
+		for _, e := range strings.Split(strings.Replace(c.Gui.ShowExtensionLineEdit.DisplayText(), " ", "", -1), ",") {
 			c.filter.Show_ext[e] = true
 		}
 	}
 	c.filter.Hide_ext = make(map[string]bool)
-	if c.Gui.Checkbox_hide_only.IsChecked() {
-		for _, e := range strings.Split(strings.Replace(c.Gui.LineEdit_hide_extension.DisplayText(), " ", "", -1), ",") {
+	if c.Gui.HideOnlyCheckBox.IsChecked() {
+		for _, e := range strings.Split(strings.Replace(c.Gui.HideExtensionLineEdit.DisplayText(), " ", "", -1), ",") {
 			c.filter.Hide_ext[e] = true
 		}
 	}
@@ -197,12 +188,9 @@ func (c *CoreproxyController) resetFilter(b bool) {
 	c.setDefaultFilter()
 }
 
-// buttons logic
-
 func (c *CoreproxyController) selectRow(r int) {
 	c.Gui.HideAllTabs()
 	actual_row := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
-	fmt.Println("Actual row", actual_row)
 	req, edited_req, resp, edited_resp := c.model.Custom.GetReqResp(actual_row - 1)
 	if req != nil {
 		c.Gui.ShowReqTab(req.ToString())
@@ -216,40 +204,6 @@ func (c *CoreproxyController) selectRow(r int) {
 	if edited_resp != nil {
 		c.Gui.ShowEditedRespTab(edited_resp.ToString())
 	}
-}
-
-func (c *CoreproxyController) interceptorToggle(b bool) {
-	if !c.Sess.Config.Interceptor {
-		c.Sess.Config.Interceptor = true
-	} else {
-		c.Sess.Config.Interceptor = false
-		if c.requests_queue > 0 || c.responses_queue > 0 {
-			tmp := c.requests_queue + c.responses_queue
-			for i := 0; i < tmp; i++ {
-				//fmt.Printf("interceptor waiting: %d\n", tmp)
-				c.forward_chan <- true
-			}
-		}
-	}
-	c.Sess.Debug(c.Module.Name(), fmt.Sprintf("Interceptor is: %v", c.Sess.Config.Interceptor))
-}
-
-func (c *CoreproxyController) forward(b bool) {
-	go func() {
-		// activate only if there's something waiting
-		if c.requests_queue > 0 || c.responses_queue > 0 {
-			c.forward_chan <- true
-		}
-	}()
-}
-
-func (c *CoreproxyController) drop(b bool) {
-	go func() {
-		// activate only if there's something waiting
-		if c.requests_queue > 0 || c.responses_queue > 0 {
-			c.drop_chan <- true
-		}
-	}()
 }
 
 func (c *CoreproxyController) startProxy(b bool) {
@@ -267,13 +221,13 @@ func (c *CoreproxyController) startProxy(b bool) {
 				c.Sess.Config.Address = s[1]
 				c.Sess.Config.Port = p
 				go func() {
-					c.Gui.StartStopBtn.SetText("Stop")
+					c.Gui.StartStopButton.SetText("Stop")
 					c.isRunning = true
 					c.Sess.Info(c.Module.Name(), "Starting proxy ...")
 					if e := c.Module.Start(); e != nil && e != http.ErrServerClosed {
 						c.Sess.Err(c.Module.Name(), fmt.Sprintf("Error starting the proxy %s\n", e))
 						c.isRunning = false
-						c.Gui.StartStopBtn.SetText("Start")
+						c.Gui.StartStopButton.SetText("Start")
 					}
 				}()
 			} else {
@@ -289,13 +243,12 @@ func (c *CoreproxyController) startProxy(b bool) {
 		c.Module.Stop()
 		c.isRunning = false
 		c.Sess.Info(c.Module.Name(), "Stopping proxy.")
-		c.Gui.StartStopBtn.SetText("Start")
+		c.Gui.StartStopButton.SetText("Start")
 	}
 }
 
 // Executed when a response arrives
-func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
-	println("response")
+func (c *CoreproxyController) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 
 	http_item := model.NewHttpItem(nil)
 
@@ -337,14 +290,15 @@ func (c *CoreproxyController) OnResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 		}
 	}
 
-	// TODO: [BUG] For whatever reason, I have to use a full HttpItem insteam of a Resp
+	// add the response to the history
+	// TODO: For whatever reason, I have to use a full HttpItem insteam of a Resp
 	c.model.Custom.EditItem(http_item, ctx.Session)
 
 	return r
 }
 
 // Executed when a request arrives
-func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 	var resp *http.Response
 	var bodyBytes []byte
 	if r != nil {
@@ -409,192 +363,9 @@ func (c *CoreproxyController) OnReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 		}
 
 	}
-	fmt.Println("got a request:", c.id)
 
-	// add the request to the history only at the end
+	// add the request to the history
 	c.model.Custom.AddItem(http_item, ctx.Session)
 
 	return r, resp
-}
-
-func (c *CoreproxyController) interceptorRequestActions(req *http.Request, resp *http.Response, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-
-	// the request to return
-	var _req *http.Request
-	var _resp *http.Response
-
-	c.requests_queue = c.requests_queue + 1
-	mutex.Lock()
-	delete(req.Header, "Connection")
-	c.Gui.InterceptorEditor.SetPlainText(util.RequestToString(req) + "\n")
-
-	for {
-		parse_error := false
-		select {
-		// pressed forward
-		case <-c.forward_chan:
-			if !c.Sess.Config.Interceptor {
-				_req = req
-				_resp = nil
-				break
-			}
-			var r *http.Request
-			var err error
-
-			reader := strings.NewReader(util.NormalizeRequest(c.Gui.InterceptorEditor.ToPlainText()))
-			buf := bufio.NewReader(reader)
-
-			r, err = http.ReadRequest(buf)
-			if err != nil && err == io.ErrUnexpectedEOF {
-				reader := strings.NewReader(util.NormalizeRequest(c.Gui.InterceptorEditor.ToPlainText()) + "\n\n")
-				buf := bufio.NewReader(reader)
-				// this is so ugly
-				r, err = http.ReadRequest(buf)
-				if err != nil {
-					c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Req: %s", err.Error()))
-					parse_error = true
-				}
-			}
-			if err == nil {
-				r.URL.Scheme = req.URL.Scheme
-				r.URL.Host = req.URL.Host
-				r.RequestURI = ""
-				if util.RequestsEquals(req, r) {
-					_req = nil
-					_resp = nil
-				} else {
-					_req = r
-					_resp = nil
-				}
-			}
-		// pressed drop
-		case <-c.drop_chan:
-			c.dropped[ctx.Session] = true
-			_req = req
-			_resp = goproxy.NewResponse(req,
-				goproxy.ContentTypeText, http.StatusForbidden, "Request droppped")
-		}
-		if !parse_error {
-			break
-		}
-	}
-	// decrease the requests in queue
-	c.requests_queue = c.requests_queue - 1
-	// rest the editor
-	c.Gui.InterceptorEditor.SetPlainText("")
-	mutex.Unlock()
-
-	return _req, _resp
-}
-
-func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp *http.Response) *http.Response {
-
-	var _resp *http.Response
-	body_hex := false
-	// increase the requests in queue
-	c.responses_queue = c.responses_queue + 1
-	mutex.Lock()
-	// if response is bigger than 100mb, show message that is too big
-	// if the response has come sort of encoding, show the body as hex
-	// and confert it back to string after the editing
-	if resp.ContentLength >= 1e+8 {
-		c.Gui.InterceptorEditor.SetPlainText("Response too big")
-	} else {
-		_, content_type_ok := resp.Header["Content-Type"]
-		_, content_encoding_ok := resp.Header["Content-Encoding"]
-		if (content_type_ok && strings.HasPrefix(resp.Header["Content-Type"][0], "image")) || content_encoding_ok {
-			c.Gui.InterceptorEditor.SetPlainText(util.ResponseToString(resp, true))
-			body_hex = true
-		} else {
-			c.Gui.InterceptorEditor.SetPlainText(util.ResponseToString(resp, false))
-		}
-	}
-	for {
-		parse_error := false
-		select {
-		case <-c.forward_chan:
-			if !c.Sess.Config.Interceptor {
-				_resp = resp
-				break
-			}
-			// if response is bigger than 100mb, ignore the content of the QPlainTextEditor
-			if resp.ContentLength >= 1e+8 {
-				_resp = resp
-			}
-
-			var tmp *http.Response
-			var err error
-			// pressed forward
-			// remove "Content-Length" so that the ReadResponse will compute the right ContentLength
-			var re = regexp.MustCompile(`(Content-Length: *\d+)\n?`)
-			s := re.ReplaceAllString(c.Gui.InterceptorEditor.ToPlainText(), "")
-
-			if body_hex {
-				a := regexp.MustCompile(`\n\n`)
-				s1 := a.Split(s, 2)
-				if len(s1) == 2 {
-					br, err := hex.DecodeString(s1[1])
-					if err != nil {
-						c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Resp: %s", err.Error()))
-						parse_error = true
-					} else {
-						body_hex = false
-						s = fmt.Sprintf("%s\n%s", s1[0], string(br))
-					}
-				}
-			} else {
-
-				reader := strings.NewReader(s)
-				buf := bufio.NewReader(reader)
-
-				tmp, err = http.ReadResponse(buf, nil)
-				// so bad, fix me
-				_resp = tmp
-
-				if err != nil && err == io.ErrUnexpectedEOF {
-					reader := strings.NewReader(s + "\n\n")
-					buf := bufio.NewReader(reader)
-					// this is so ugly
-					tmp, err = http.ReadResponse(buf, nil)
-					_resp = tmp
-					if err != nil {
-						c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Resp: %s", err.Error()))
-						parse_error = true
-					}
-				}
-
-				if err == nil {
-					if util.ResponsesEquals(resp, _resp) {
-						// response not edited
-						_resp = nil
-					}
-				}
-			}
-		case <-c.drop_chan:
-			// pressed drop
-			_resp = goproxy.NewResponse(req,
-				goproxy.ContentTypeText, http.StatusForbidden, "Request droppped")
-		}
-		if !parse_error {
-			break
-		}
-	}
-
-	// decrease the requests in queue
-	c.responses_queue = c.responses_queue - 1
-	// rest the editor
-	c.Gui.InterceptorEditor.SetPlainText("")
-	mutex.Unlock()
-
-	return _resp
-}
-
-func cloneHeaders(src http.Header) http.Header {
-	dst := http.Header{}
-	for k, vs := range src {
-		for _, v := range vs {
-			dst.Add(k, v)
-		}
-	}
-	return dst
 }

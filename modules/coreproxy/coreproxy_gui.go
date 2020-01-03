@@ -2,14 +2,15 @@ package coreproxy
 
 import (
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/rhaidiz/broxy/core"
 	"github.com/rhaidiz/broxy/modules/coreproxy/model"
 	qtcore "github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/quick"
 	"github.com/therecipe/qt/widgets"
-	"os"
-	"time"
 )
 
 const (
@@ -40,57 +41,51 @@ type CoreproxyGui struct {
 
 	//_ func() `signal:"test,auto"`
 	// history tab
-	splitter           *widgets.QSplitter
-	historyTable       *widgets.QTreeView
-	tableBridge        *TableBridge
-	reqRespTab         *widgets.QTabWidget
-	RequestText        *widgets.QPlainTextEdit
-	EditedRequestText  *widgets.QPlainTextEdit
-	ResponseText       *widgets.QPlainTextEdit
-	EditedResponseText *widgets.QPlainTextEdit
-	historyTab         *widgets.QTabWidget
+	splitter               *widgets.QSplitter
+	tableBridge            *TableBridge
+	reqRespTab             *widgets.QTabWidget
+	RequestTextEdit        *widgets.QPlainTextEdit
+	EditedRequestTextEdit  *widgets.QPlainTextEdit
+	ResponseTextEdit       *widgets.QPlainTextEdit
+	EditedResponseTextEdit *widgets.QPlainTextEdit
+	historyTab             *widgets.QTabWidget
 
 	// Filter
-	TextSearchLineEdit      *widgets.QLineEdit
-	ApplyFiltersBtn         *widgets.QPushButton
-	ResetFiltersBtn         *widgets.QPushButton
-	Checkbox_status_100     *widgets.QCheckBox
-	Checkbox_status_200     *widgets.QCheckBox
-	Checkbox_status_300     *widgets.QCheckBox
-	Checkbox_status_400     *widgets.QCheckBox
-	Checkbox_status_500     *widgets.QCheckBox
-	LineEdit_show_extension *widgets.QLineEdit
-	LineEdit_hide_extension *widgets.QLineEdit
-	Checkbox_show_only      *widgets.QCheckBox
-	Checkbox_hide_only      *widgets.QCheckBox
-	RightItemLabels         []string
+	TextSearchLineEdit    *widgets.QLineEdit
+	ApplyFiltersButton    *widgets.QPushButton
+	ResetFiltersButton    *widgets.QPushButton
+	S100CheckBox          *widgets.QCheckBox
+	S200CheckBox          *widgets.QCheckBox
+	S300CheckBox          *widgets.QCheckBox
+	S400CheckBox          *widgets.QCheckBox
+	S500CheckBox          *widgets.QCheckBox
+	ShowExtensionLineEdit *widgets.QLineEdit
+	HideExtensionLineEdit *widgets.QLineEdit
+	ShowOnlyCheckBox      *widgets.QCheckBox
+	HideOnlyCheckBox      *widgets.QCheckBox
+	RightItemLabels       []string
 
 	coreProxyGui *widgets.QTabWidget
-
-	//widget      *widgets.QWidget
-	//tableview   *widgets.QTableView
-	//buttonStart *widgets.QPushButton
-	//buttonStop  *widgets.QPushButton
 
 	tableModel *model.CustomTableModel
 
 	view *quick.QQuickView
 
 	// settings tab
-	ListenerLineEdit        *widgets.QLineEdit
-	StartStopBtn            *widgets.QPushButton
-	Checkbox_req_intercept  *widgets.QCheckBox
-	Checkbox_resp_intercept *widgets.QCheckBox
-	DownloadCABtn           *widgets.QPushButton
+	ListenerLineEdit      *widgets.QLineEdit
+	StartStopButton       *widgets.QPushButton
+	ReqInterceptCheckBox  *widgets.QCheckBox
+	RespInterceptCheckBox *widgets.QCheckBox
+	DownloadCAButton      *widgets.QPushButton
 
 	// interceptor
-	ForwardBtn        *widgets.QPushButton
-	DropBtn           *widgets.QPushButton
-	InterceptorToggle *widgets.QPushButton
-	InterceptorEditor *widgets.QPlainTextEdit
-	Toggle            func(bool)
-	Forward           func(bool)
-	Drop              func(bool)
+	ForwardButton           *widgets.QPushButton
+	DropButton              *widgets.QPushButton
+	InterceptorToggleButton *widgets.QPushButton
+	InterceptorTextEdit     *widgets.QPlainTextEdit
+	Toggle                  func(bool)
+	Forward                 func(bool)
+	Drop                    func(bool)
 }
 
 /*
@@ -145,25 +140,25 @@ func (g *CoreproxyGui) intercetorTabGui() widgets.QWidget_ITF {
 
 	hlayout := widgets.NewQHBoxLayout()
 
-	g.ForwardBtn = widgets.NewQPushButton2("Forward", nil)
-	g.DropBtn = widgets.NewQPushButton2("Drop", nil)
-	g.InterceptorToggle = widgets.NewQPushButton2("Interceptor", nil)
+	g.ForwardButton = widgets.NewQPushButton2("Forward", nil)
+	g.DropButton = widgets.NewQPushButton2("Drop", nil)
+	g.InterceptorToggleButton = widgets.NewQPushButton2("Interceptor", nil)
 	spacerItem := widgets.NewQSpacerItem(400, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
 
-	hlayout.AddWidget(g.ForwardBtn, 0, qtcore.Qt__AlignLeft)
-	g.ForwardBtn.ConnectClicked(g.Forward)
-	hlayout.AddWidget(g.DropBtn, 0, qtcore.Qt__AlignLeft)
-	g.DropBtn.ConnectClicked(g.Drop)
-	hlayout.AddWidget(g.InterceptorToggle, 0, qtcore.Qt__AlignLeft)
-	g.InterceptorToggle.ConnectClicked(g.Toggle)
-	g.InterceptorToggle.SetAutoRepeat(true)
-	g.InterceptorToggle.SetCheckable(true)
+	hlayout.AddWidget(g.ForwardButton, 0, qtcore.Qt__AlignLeft)
+	g.ForwardButton.ConnectClicked(g.Forward)
+	hlayout.AddWidget(g.DropButton, 0, qtcore.Qt__AlignLeft)
+	g.DropButton.ConnectClicked(g.Drop)
+	hlayout.AddWidget(g.InterceptorToggleButton, 0, qtcore.Qt__AlignLeft)
+	g.InterceptorToggleButton.ConnectClicked(g.Toggle)
+	g.InterceptorToggleButton.SetAutoRepeat(true)
+	g.InterceptorToggleButton.SetCheckable(true)
 	hlayout.AddItem(spacerItem)
 
 	vlayout.AddLayout(hlayout, 0)
 
-	g.InterceptorEditor = widgets.NewQPlainTextEdit(nil)
-	vlayout.AddWidget(g.InterceptorEditor, 0, 0)
+	g.InterceptorTextEdit = widgets.NewQPlainTextEdit(nil)
+	vlayout.AddWidget(g.InterceptorTextEdit, 0, 0)
 
 	return widget
 
@@ -179,19 +174,6 @@ func (g *CoreproxyGui) filtersTabGui() widgets.QWidget_ITF {
 	scrollArea.SetWidget(scrollAreaWidget)
 
 	//TODO: implement scope
-	// in-scope checkbox
-	// label := widgets.NewQLabel(nil, 0)
-	// font := gui.NewQFont()
-	// font.SetPointSize(20)
-	// font.SetBold(true)
-	// font.SetWeight(75)
-	// label.SetFont(font)
-	// label.SetText("Req type")
-	// vlayout1.AddWidget(label, 0, qtcore.Qt__AlignLeft)
-
-	// Checkbox_only_scope := widgets.NewQCheckBox(nil)
-	// Checkbox_only_scope.SetText("Only in-scope")
-	// vlayout1.AddWidget(Checkbox_only_scope, 0, qtcore.Qt__AlignLeft)
 
 	// search text
 	label2 := widgets.NewQLabel(nil, 0)
@@ -220,25 +202,25 @@ func (g *CoreproxyGui) filtersTabGui() widgets.QWidget_ITF {
 	label3.SetText("Status")
 	vlayout1.AddWidget(label3, 0, qtcore.Qt__AlignLeft)
 
-	g.Checkbox_status_100 = widgets.NewQCheckBox(nil)
-	g.Checkbox_status_100.SetText("1xx")
-	vlayout1.AddWidget(g.Checkbox_status_100, 0, qtcore.Qt__AlignLeft)
+	g.S100CheckBox = widgets.NewQCheckBox(nil)
+	g.S100CheckBox.SetText("1xx")
+	vlayout1.AddWidget(g.S100CheckBox, 0, qtcore.Qt__AlignLeft)
 
-	g.Checkbox_status_200 = widgets.NewQCheckBox(nil)
-	g.Checkbox_status_200.SetText("2xx")
-	vlayout1.AddWidget(g.Checkbox_status_200, 0, qtcore.Qt__AlignLeft)
+	g.S200CheckBox = widgets.NewQCheckBox(nil)
+	g.S200CheckBox.SetText("2xx")
+	vlayout1.AddWidget(g.S200CheckBox, 0, qtcore.Qt__AlignLeft)
 
-	g.Checkbox_status_300 = widgets.NewQCheckBox(nil)
-	g.Checkbox_status_300.SetText("3xx")
-	vlayout1.AddWidget(g.Checkbox_status_300, 0, qtcore.Qt__AlignLeft)
+	g.S300CheckBox = widgets.NewQCheckBox(nil)
+	g.S300CheckBox.SetText("3xx")
+	vlayout1.AddWidget(g.S300CheckBox, 0, qtcore.Qt__AlignLeft)
 
-	g.Checkbox_status_400 = widgets.NewQCheckBox(nil)
-	g.Checkbox_status_400.SetText("4xx")
-	vlayout1.AddWidget(g.Checkbox_status_400, 0, qtcore.Qt__AlignLeft)
+	g.S400CheckBox = widgets.NewQCheckBox(nil)
+	g.S400CheckBox.SetText("4xx")
+	vlayout1.AddWidget(g.S400CheckBox, 0, qtcore.Qt__AlignLeft)
 
-	g.Checkbox_status_500 = widgets.NewQCheckBox(nil)
-	g.Checkbox_status_500.SetText("5xx")
-	vlayout1.AddWidget(g.Checkbox_status_500, 0, qtcore.Qt__AlignLeft)
+	g.S500CheckBox = widgets.NewQCheckBox(nil)
+	g.S500CheckBox.SetText("5xx")
+	vlayout1.AddWidget(g.S500CheckBox, 0, qtcore.Qt__AlignLeft)
 
 	// Extensions
 	label4 := widgets.NewQLabel(nil, 0)
@@ -252,29 +234,29 @@ func (g *CoreproxyGui) filtersTabGui() widgets.QWidget_ITF {
 	vlayout1.AddWidget(label4, 0, qtcore.Qt__AlignLeft)
 
 	gridLayout := widgets.NewQGridLayout2()
-	g.LineEdit_show_extension = widgets.NewQLineEdit(nil)
-	g.LineEdit_show_extension.SetMinimumSize(qtcore.NewQSize2(150, 0))
-	g.LineEdit_show_extension.SetMaximumSize(qtcore.NewQSize2(150, 16777215))
-	g.LineEdit_show_extension.SetBaseSize(qtcore.NewQSize2(0, 0))
-	g.LineEdit_show_extension.SetText("")
+	g.ShowExtensionLineEdit = widgets.NewQLineEdit(nil)
+	g.ShowExtensionLineEdit.SetMinimumSize(qtcore.NewQSize2(150, 0))
+	g.ShowExtensionLineEdit.SetMaximumSize(qtcore.NewQSize2(150, 16777215))
+	g.ShowExtensionLineEdit.SetBaseSize(qtcore.NewQSize2(0, 0))
+	g.ShowExtensionLineEdit.SetText("")
 
-	g.LineEdit_hide_extension = widgets.NewQLineEdit(nil)
-	g.LineEdit_hide_extension.SetMinimumSize(qtcore.NewQSize2(150, 0))
-	g.LineEdit_hide_extension.SetMaximumSize(qtcore.NewQSize2(150, 16777215))
-	g.LineEdit_hide_extension.SetBaseSize(qtcore.NewQSize2(0, 0))
-	g.LineEdit_hide_extension.SetText("")
+	g.HideExtensionLineEdit = widgets.NewQLineEdit(nil)
+	g.HideExtensionLineEdit.SetMinimumSize(qtcore.NewQSize2(150, 0))
+	g.HideExtensionLineEdit.SetMaximumSize(qtcore.NewQSize2(150, 16777215))
+	g.HideExtensionLineEdit.SetBaseSize(qtcore.NewQSize2(0, 0))
+	g.HideExtensionLineEdit.SetText("")
 
-	g.Checkbox_show_only = widgets.NewQCheckBox(nil)
-	g.Checkbox_show_only.SetText("Show only")
+	g.ShowOnlyCheckBox = widgets.NewQCheckBox(nil)
+	g.ShowOnlyCheckBox.SetText("Show only")
 
-	g.Checkbox_hide_only = widgets.NewQCheckBox(nil)
-	g.Checkbox_hide_only.SetText("Hide")
+	g.HideOnlyCheckBox = widgets.NewQCheckBox(nil)
+	g.HideOnlyCheckBox.SetText("Hide")
 
-	gridLayout.AddWidget(g.LineEdit_show_extension, 0, 1, 1)
-	gridLayout.AddWidget(g.LineEdit_hide_extension, 1, 1, 1)
+	gridLayout.AddWidget(g.ShowExtensionLineEdit, 0, 1, 1)
+	gridLayout.AddWidget(g.HideExtensionLineEdit, 1, 1, 1)
 
-	gridLayout.AddWidget(g.Checkbox_show_only, 0, 0, 1)
-	gridLayout.AddWidget(g.Checkbox_hide_only, 1, 0, 1)
+	gridLayout.AddWidget(g.ShowOnlyCheckBox, 0, 0, 1)
+	gridLayout.AddWidget(g.HideOnlyCheckBox, 1, 0, 1)
 
 	spacerItem := widgets.NewQSpacerItem(400, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
 	gridLayout.AddItem(spacerItem, 0, 2, 1, 1, qtcore.Qt__AlignRight)
@@ -282,15 +264,15 @@ func (g *CoreproxyGui) filtersTabGui() widgets.QWidget_ITF {
 	vlayout1.AddLayout(gridLayout, 0)
 
 	// Apply\Reset buttons
-	g.ApplyFiltersBtn = widgets.NewQPushButton2("Apply", nil)
-	g.ApplyFiltersBtn.ConnectClicked(g.ApplyFilters)
+	g.ApplyFiltersButton = widgets.NewQPushButton2("Apply", nil)
+	g.ApplyFiltersButton.ConnectClicked(g.ApplyFilters)
 
-	gridLayout.AddWidget(g.ApplyFiltersBtn, 2, 1, 1)
+	gridLayout.AddWidget(g.ApplyFiltersButton, 2, 1, 1)
 
-	g.ResetFiltersBtn = widgets.NewQPushButton2("Reset", nil)
-	g.ResetFiltersBtn.ConnectClicked(g.ResetFilters)
+	g.ResetFiltersButton = widgets.NewQPushButton2("Reset", nil)
+	g.ResetFiltersButton.ConnectClicked(g.ResetFilters)
 
-	gridLayout.AddWidget(g.ResetFiltersBtn, 2, 0, 1)
+	gridLayout.AddWidget(g.ResetFiltersButton, 2, 0, 1)
 
 	spacerItem1 := widgets.NewQSpacerItem(20, 1000, widgets.QSizePolicy__Minimum, widgets.QSizePolicy__Expanding)
 	vlayout1.AddItem(spacerItem1)
@@ -334,9 +316,9 @@ func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
 	g.ListenerLineEdit.SetText("127.0.0.1:8080")
 	gridLayout.AddWidget(g.ListenerLineEdit, 0, 0, 1)
 
-	g.StartStopBtn = widgets.NewQPushButton2("Start", nil)
-	g.StartStopBtn.ConnectClicked(g.StartProxy)
-	gridLayout.AddWidget(g.StartStopBtn, 0, 1, 1)
+	g.StartStopButton = widgets.NewQPushButton2("Start", nil)
+	g.StartStopButton.ConnectClicked(g.StartProxy)
+	gridLayout.AddWidget(g.StartStopButton, 0, 1, 1)
 
 	spacerItem := widgets.NewQSpacerItem(400, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
 	gridLayout.AddItem(spacerItem, 0, 2, 1, 1, qtcore.Qt__AlignRight)
@@ -349,24 +331,24 @@ func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
 	label1.SetText("Interception")
 	vlayout1.AddWidget(label1, 0, qtcore.Qt__AlignLeft)
 
-	g.Checkbox_req_intercept = widgets.NewQCheckBox(nil)
-	g.Checkbox_req_intercept.SetText("Intercept requests")
-	g.Checkbox_req_intercept.ConnectClicked(g.CheckReqInterception)
-	vlayout1.AddWidget(g.Checkbox_req_intercept, 0, qtcore.Qt__AlignLeft)
+	g.ReqInterceptCheckBox = widgets.NewQCheckBox(nil)
+	g.ReqInterceptCheckBox.SetText("Intercept requests")
+	g.ReqInterceptCheckBox.ConnectClicked(g.CheckReqInterception)
+	vlayout1.AddWidget(g.ReqInterceptCheckBox, 0, qtcore.Qt__AlignLeft)
 
-	g.Checkbox_resp_intercept = widgets.NewQCheckBox(nil)
-	g.Checkbox_resp_intercept.SetText("Intercept responses")
-	g.Checkbox_resp_intercept.ConnectClicked(g.CheckRespInterception)
-	vlayout1.AddWidget(g.Checkbox_resp_intercept, 0, qtcore.Qt__AlignLeft)
+	g.RespInterceptCheckBox = widgets.NewQCheckBox(nil)
+	g.RespInterceptCheckBox.SetText("Intercept responses")
+	g.RespInterceptCheckBox.ConnectClicked(g.CheckRespInterception)
+	vlayout1.AddWidget(g.RespInterceptCheckBox, 0, qtcore.Qt__AlignLeft)
 
 	label_ca := widgets.NewQLabel(nil, 0)
 	label_ca.SetText("Certificate Authority")
 	label_ca.SetFont(font)
 	vlayout1.AddWidget(label_ca, 0, qtcore.Qt__AlignLeft)
 
-	g.DownloadCABtn = widgets.NewQPushButton2("Download CA certificate", nil)
-	g.DownloadCABtn.ConnectClicked(g.DownloadCAClicked)
-	vlayout1.AddWidget(g.DownloadCABtn, 0, qtcore.Qt__AlignLeft)
+	g.DownloadCAButton = widgets.NewQPushButton2("Download CA certificate", nil)
+	g.DownloadCAButton.ConnectClicked(g.DownloadCAClicked)
+	vlayout1.AddWidget(g.DownloadCAButton, 0, qtcore.Qt__AlignLeft)
 
 	spacerItem1 := widgets.NewQSpacerItem(20, 40, widgets.QSizePolicy__Minimum, widgets.QSizePolicy__Expanding)
 	vlayout1.AddItem(spacerItem1)
@@ -394,24 +376,24 @@ func (g *CoreproxyGui) HideAllTabs() {
 }
 
 func (g *CoreproxyGui) ShowReqTab(req string) {
-	g.reqRespTab.AddTab(g.RequestText, "Request")
-	g.RequestText.SetPlainText(req)
+	g.reqRespTab.AddTab(g.RequestTextEdit, "Request")
+	g.RequestTextEdit.SetPlainText(req)
 }
 
 func (g *CoreproxyGui) ShowEditedReqTab(edited_req string) {
-	g.reqRespTab.AddTab(g.EditedRequestText, "Edited Request")
-	g.EditedRequestText.SetPlainText(edited_req)
+	g.reqRespTab.AddTab(g.EditedRequestTextEdit, "Edited Request")
+	g.EditedRequestTextEdit.SetPlainText(edited_req)
 
 }
 
 func (g *CoreproxyGui) ShowRespTab(resp string) {
-	g.reqRespTab.AddTab(g.ResponseText, "Response")
-	g.ResponseText.SetPlainText(resp)
+	g.reqRespTab.AddTab(g.ResponseTextEdit, "Response")
+	g.ResponseTextEdit.SetPlainText(resp)
 }
 
 func (g *CoreproxyGui) ShowEditedRespTab(edited_resp string) {
-	g.reqRespTab.AddTab(g.EditedResponseText, "Edited Response")
-	g.EditedResponseText.SetPlainText(edited_resp)
+	g.reqRespTab.AddTab(g.EditedResponseTextEdit, "Edited Response")
+	g.EditedResponseTextEdit.SetPlainText(edited_resp)
 }
 
 func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
@@ -430,17 +412,17 @@ func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
 	// request\response tabs with text editor
 	g.reqRespTab = widgets.NewQTabWidget(nil)
 	g.reqRespTab.SetDocumentMode(true)
-	g.RequestText = widgets.NewQPlainTextEdit(nil)
-	g.RequestText.SetReadOnly(true)
-	g.ResponseText = widgets.NewQPlainTextEdit(nil)
-	g.ResponseText.SetReadOnly(true)
-	g.EditedRequestText = widgets.NewQPlainTextEdit(nil)
-	g.EditedRequestText.SetReadOnly(true)
-	g.EditedResponseText = widgets.NewQPlainTextEdit(nil)
-	g.EditedResponseText.SetReadOnly(true)
-	//g.reqRespTab.AddTab(g.RequestText, "Request")
-	//g.reqRespTab.AddTab(g.EditedRequestText, "Edited Request")
-	//g.reqRespTab.AddTab(g.ResponseText, "Response")
+	g.RequestTextEdit = widgets.NewQPlainTextEdit(nil)
+	g.RequestTextEdit.SetReadOnly(true)
+	g.ResponseTextEdit = widgets.NewQPlainTextEdit(nil)
+	g.ResponseTextEdit.SetReadOnly(true)
+	g.EditedRequestTextEdit = widgets.NewQPlainTextEdit(nil)
+	g.EditedRequestTextEdit.SetReadOnly(true)
+	g.EditedResponseTextEdit = widgets.NewQPlainTextEdit(nil)
+	g.EditedResponseTextEdit.SetReadOnly(true)
+	//g.reqRespTab.AddTab(g.RequestTextEdit, "Request")
+	//g.reqRespTab.AddTab(g.EditedRequestTextEdit, "Edited Request")
+	//g.reqRespTab.AddTab(g.ResponseTextEdit, "Response")
 
 	// the splitter for tab history
 	g.splitter = widgets.NewQSplitter(nil)
@@ -494,56 +476,6 @@ func (t *CoreproxyGui) FileSaveAs(s string) bool {
 	return true
 }
 
-//func (g *CoreproxyGui) GetModuleGui2() widgets.QWidget_ITF {
-//
-//	g.coreProxyGui = widgets.NewQTabWidget(nil)
-//	g.coreProxyGui.SetDocumentMode(true)
-//
-//	g.historyTable = widgets.NewQTreeView(nil)
-//	g.reqRespTab = widgets.NewQTabWidget(nil)
-//	g.reqRespTab.SetDocumentMode(true)
-//
-//	g.historyTable.SetModel(g.tableModel)
-//	//g.historyTable.VerticalHeader().Hide()
-//	//g.historyTable.SetSelectionBehavior(widgets.QAbstractItemView__SelectRows)
-//	//g.historyTable.SetVerticalScrollMode(widgets.QAbstractItemView__ScrollPerPixel)
-//	//g.historyTable.SetSelectionMode(widgets.QAbstractItemView__SingleSelection)
-//	//g.historyTable.ConnectSelectionChanged(func(s *qtcore.QItemSelection, ds *qtcore.QItemSelection) {
-//	//	fmt.Println("sel changed")
-//	//	//g.requestText.SetPlainText(g.tableModel.GetIndex(index.Row()).Path)
-//	//})
-//
-//	//g.requestText = widgets.NewQPlainTextEdit(nil)
-//	//g.responseText = widgets.NewQPlainTextEdit(nil)
-//
-//	//g.reqRespTab.AddTab(g.requestText, "Request")
-//	//g.reqRespTab.AddTab(g.responseText, "Response")
-//
-//	g.splitter = widgets.NewQSplitter(nil)
-//
-//	g.splitter.SetOrientation(qtcore.Qt__Vertical)
-//
-//	g.splitter.AddWidget(g.historyTable)
-//	g.splitter.AddWidget(g.reqRespTab)
-//	var sizes []int
-//	sizes = make([]int, 2)
-//	sizes[0] = 1 * g.splitter.SizeHint().Height()
-//	sizes[1] = 1 * g.splitter.SizeHint().Height()
-//	g.splitter.SetSizes(sizes)
-//
-//	g.startBtn = widgets.NewQPushButton2("Start", nil)
-//	g.startBtn.ConnectClicked(g.StartProxy)
-//
-//	bench := widgets.NewQPushButton2("bench", nil)
-//	//bench.ConnectClicked(g.blabla)
-//
-//	g.coreProxyGui.AddTab(g.splitter, "History")
-//	g.coreProxyGui.AddTab(g.startBtn, "Settings")
-//	g.coreProxyGui.AddTab(bench, "Bench")
-//
-//	return g.coreProxyGui
-//}
-
 func (g *CoreproxyGui) Name() string {
 	return "Proxy"
 }
@@ -570,9 +502,3 @@ func (g *CoreproxyGui) bench(b bool) {
 	fmt.Println(elapsed)
 
 }
-
-//func (g *CoreproxyGui) blabla(b bool) {
-//	for i := 0; i < 10; i++ {
-//		time.Sleep(100 * time.Millisecond)
-//	}
-//}
