@@ -1,6 +1,7 @@
-import QtQuick 2.10				//Item
-import QtQuick.Controls 1.4		//TableView
-import QtQuick.Layouts 1.3		//ColumnLayout
+import QtQuick 2.12				//Item
+import QtQuick.Controls 1.4		//TableViewColumn
+import QtQuick.Controls 2.12		//Button
+import QtQuick.Layouts 1.12		//ColumnLayout
 import CustomQmlTypes 1.0		//CustomTableModel
 
 Item {
