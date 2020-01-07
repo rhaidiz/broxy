@@ -15,5 +15,4 @@ clean:
 	find . -type f -name 'moc_*' -exec rm {} +
 	find . -type f -name 'rcc.*' -exec rm {} +
 	find . -type f -name 'rcc_*' -exec rm {} +
-	rm -r darwin
 	rm -r deploy
