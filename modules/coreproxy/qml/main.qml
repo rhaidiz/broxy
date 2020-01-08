@@ -1,8 +1,8 @@
-import QtQuick 2.12				//Item
-import QtQuick.Controls 1.4		//TableViewColumn
-import QtQuick.Controls 2.12		//Button
-import QtQuick.Layouts 1.12		//ColumnLayout
-import CustomQmlTypes 1.0		//CustomTableModel
+import QtQuick 2.12
+import QtQuick.Controls 1.4
+import QtQuick.Controls 2.12
+import QtQuick.Layouts 1.12
+import CustomQmlTypes 1.0
 
 Item {
 	width: 600

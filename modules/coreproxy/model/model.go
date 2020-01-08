@@ -205,7 +205,6 @@ func (m *CustomTableModel) clearHistory() {
 	m.modelData = []HttpItem{}
 	m.hashMap = make(map[int64]*HttpItem)
 	m.EndRemoveRows()
-	fmt.Println("done %d", len(m.modelData))
 }
 
 func (m *CustomTableModel) addItem(item *HttpItem, i int64) {
@@ -215,7 +214,6 @@ func (m *CustomTableModel) addItem(item *HttpItem, i int64) {
 	m.hashMap[i] = item
 	m.modelData = append(m.modelData, *item)
 	m.EndInsertRows()
-	fmt.Println("add item ", len(m.modelData))
 }
 
 func (m *CustomTableModel) editItem(item *HttpItem, i int64) {
