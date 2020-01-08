@@ -16,7 +16,7 @@ type Broxygui struct {
 
 func (g *Broxygui) setup() {
 
-	g.SetWindowTitle("Broxy (Beta)")
+	g.SetWindowTitle("Broxy (alpha)")
 	//g.SetMinimumSize(core.NewQSize2(523, 317))
 
 	g.tabWidget = widgets.NewQTabWidget(nil)
