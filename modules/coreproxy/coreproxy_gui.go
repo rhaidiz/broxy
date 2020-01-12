@@ -252,11 +252,11 @@ func (g *CoreproxyGui) filtersTabGui() widgets.QWidget_ITF {
 	g.HideOnlyCheckBox = widgets.NewQCheckBox(nil)
 	g.HideOnlyCheckBox.SetText("Hide")
 
-	gridLayout.AddWidget(g.ShowExtensionLineEdit, 0, 1, 1)
-	gridLayout.AddWidget(g.HideExtensionLineEdit, 1, 1, 1)
+	gridLayout.AddWidget(g.ShowExtensionLineEdit)
+	gridLayout.AddWidget(g.HideExtensionLineEdit)
 
-	gridLayout.AddWidget(g.ShowOnlyCheckBox, 0, 0, 1)
-	gridLayout.AddWidget(g.HideOnlyCheckBox, 1, 0, 1)
+	gridLayout.AddWidget(g.ShowOnlyCheckBox)
+	gridLayout.AddWidget(g.HideOnlyCheckBox)
 
 	spacerItem := widgets.NewQSpacerItem(400, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
 	gridLayout.AddItem(spacerItem, 0, 2, 1, 1, qtcore.Qt__AlignRight)
@@ -267,12 +267,12 @@ func (g *CoreproxyGui) filtersTabGui() widgets.QWidget_ITF {
 	g.ApplyFiltersButton = widgets.NewQPushButton2("Apply", nil)
 	g.ApplyFiltersButton.ConnectClicked(g.ApplyFilters)
 
-	gridLayout.AddWidget(g.ApplyFiltersButton, 2, 1, 1)
+	gridLayout.AddWidget(g.ApplyFiltersButton)
 
 	g.ResetFiltersButton = widgets.NewQPushButton2("Reset", nil)
 	g.ResetFiltersButton.ConnectClicked(g.ResetFilters)
 
-	gridLayout.AddWidget(g.ResetFiltersButton, 2, 0, 1)
+	gridLayout.AddWidget(g.ResetFiltersButton)
 
 	spacerItem1 := widgets.NewQSpacerItem(20, 1000, widgets.QSizePolicy__Minimum, widgets.QSizePolicy__Expanding)
 	vlayout1.AddItem(spacerItem1)
@@ -314,11 +314,11 @@ func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
 	g.ListenerLineEdit.SetMaximumSize(qtcore.NewQSize2(150, 16777215))
 	g.ListenerLineEdit.SetBaseSize(qtcore.NewQSize2(0, 0))
 	g.ListenerLineEdit.SetText("127.0.0.1:8080")
-	gridLayout.AddWidget(g.ListenerLineEdit, 0, 0, 1)
+	gridLayout.AddWidget(g.ListenerLineEdit)
 
 	g.StartStopButton = widgets.NewQPushButton2("Start", nil)
 	g.StartStopButton.ConnectClicked(g.StartProxy)
-	gridLayout.AddWidget(g.StartStopButton, 0, 1, 1)
+	gridLayout.AddWidget(g.StartStopButton)
 
 	spacerItem := widgets.NewQSpacerItem(400, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
 	gridLayout.AddItem(spacerItem, 0, 2, 1, 1, qtcore.Qt__AlignRight)

@@ -242,31 +242,31 @@ func (m *CustomTableModel) data(index *core.QModelIndex, role int) *core.QVarian
 	item := m.modelData[index.Row()]
 	switch role {
 	case ID:
-		return core.NewQVariant7(item.ID)
+		return core.NewQVariant1(item.ID)
 	case Host:
-		return core.NewQVariant14(item.Req.Host)
+		return core.NewQVariant1(item.Req.Host)
 	case Method:
-		return core.NewQVariant14(item.Req.Method)
+		return core.NewQVariant1(item.Req.Method)
 	case Path:
-		return core.NewQVariant14(item.Req.Path)
+		return core.NewQVariant1(item.Req.Path)
 	case Params:
 		//TODO fix me
 		if false {
-			return core.NewQVariant14("✓")
+			return core.NewQVariant1("✓")
 		}
-		return core.NewQVariant14("")
+		return core.NewQVariant1("")
 	case Edit:
 		if item.EditedReq != nil || item.EditedResp != nil {
-			return core.NewQVariant14("✓")
+			return core.NewQVariant1("✓")
 		}
-		return core.NewQVariant14("")
+		return core.NewQVariant1("")
 	case Status:
 		if item.Resp != nil {
-			return core.NewQVariant14(item.Resp.Status)
+			return core.NewQVariant1(item.Resp.Status)
 		}
 	case Length:
 		if item.Resp != nil {
-			return core.NewQVariant14(fmt.Sprintf("%d", item.Resp.ContentLength))
+			return core.NewQVariant1(fmt.Sprintf("%d", item.Resp.ContentLength))
 		}
 	}
 	return core.NewQVariant()
