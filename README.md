@@ -19,13 +19,13 @@ Broxy is currently a work in progress project. The current version provides the 
 # Installation
 
 ## Grab a Binary
-Grab a compiled version of Broxy here (windows binary on its way).
+Grab a compiled version of Broxy [here](https://github.com/rhaidiz/broxy/releases) (windows binary on its way).
 
 ## Compiling from Sources
 To compile Broxy make sure you have the following installed and properly configured:
 
-* [Go](https://golang.org/doc/install);
-* [Qt 5.13 and Qt wrapper](https://github.com/therecipe/qt/wiki/Installation).
+* [Go](https://golang.org/doc/install)
+* [Qt 5.13 and Qt wrapper](https://github.com/therecipe/qt/wiki/Installation)
 
 Once Go, Qt 5.13 and the Qt wrapper are ready, just do:
 
