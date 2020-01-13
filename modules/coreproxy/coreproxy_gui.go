@@ -16,7 +16,7 @@ import (
 const (
 	CopyURLLabel        = "Copy URL"
 	CopyBaseURLLabel    = "Copy base URL"
-	SendToRepeaterLabel = "Send to Repeater"
+	SendToRepeaterLabel = "Repeat"
 	ClearHistoryLabel   = "Clear History"
 )
 
@@ -454,11 +454,11 @@ func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
 }
 
 func (t *CoreproxyGui) FileSaveAs(s string) bool {
-	var fileDialog = widgets.NewQFileDialog2(nil, "Save as...", "", "")
+	var fileDialog = widgets.NewQFileDialog2(nil, "Save as...", "broxyca.pem", "PEM (*.pem)")
 	fileDialog.SetAcceptMode(widgets.QFileDialog__AcceptSave)
-	var mimeTypes = []string{"application/x-x509-ca-cert"}
+	var mimeTypes = []string{"application/x-pem-file"}
 	fileDialog.SetMimeTypeFilters(mimeTypes)
-	fileDialog.SetDefaultSuffix("der")
+	fileDialog.SetDefaultSuffix("pem")
 	if fileDialog.Exec() != int(widgets.QDialog__Accepted) {
 		return false
 	}
