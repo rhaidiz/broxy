@@ -112,7 +112,7 @@ func (c *CoreproxyController) rightItemClicked(s string, r int) {
 		clipboard.SetText(fmt.Sprintf("%s://%s%s", req.Schema, req.Host, req.Path), gui.QClipboard__Clipboard)
 	} else if s == CopyBaseURLLabel {
 		clipboard.SetText(fmt.Sprintf("%s://%s", req.Schema, req.Host), gui.QClipboard__Clipboard)
-	} else if s == SendToRepeaterLabel {
+	} else if s == RepeatLabel {
 		// FIXME: I **really** don't like this
 		c.Sess.Exec("repeater", "send-to", req)
 	} else if s == ClearHistoryLabel {

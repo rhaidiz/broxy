@@ -14,19 +14,18 @@ import (
 )
 
 const (
-	CopyURLLabel        = "Copy URL"
-	CopyBaseURLLabel    = "Copy base URL"
-	SendToRepeaterLabel = "Repeat"
-	ClearHistoryLabel   = "Clear History"
+	CopyURLLabel      = "Copy URL"
+	CopyBaseURLLabel  = "Copy base URL"
+	RepeatLabel       = "Repeat"
+	ClearHistoryLabel = "Clear History"
 )
 
 type CoreproxyGui struct {
 	core.GuiModule
 
-	_ func() `signal:"test,auto"`
-
 	Sess *core.Session
 
+	rightClickLabels      [4]string
 	ControllerInit        func()
 	StartProxy            func(bool)
 	StopProxy             func()
@@ -39,10 +38,10 @@ type CoreproxyGui struct {
 	RightItemClicked      func(string, int)
 	settingsTab           *widgets.QTabWidget
 
-	//_ func() `signal:"test,auto"`
 	// history tab
+	historyTableView       *widgets.QTableView
+	contextMenu            *widgets.QMenu
 	splitter               *widgets.QSplitter
-	tableBridge            *TableBridge
 	reqRespTab             *widgets.QTabWidget
 	RequestTextEdit        *widgets.QPlainTextEdit
 	EditedRequestTextEdit  *widgets.QPlainTextEdit
@@ -63,7 +62,6 @@ type CoreproxyGui struct {
 	HideExtensionLineEdit *widgets.QLineEdit
 	ShowOnlyCheckBox      *widgets.QCheckBox
 	HideOnlyCheckBox      *widgets.QCheckBox
-	RightItemLabels       []string
 
 	coreProxyGui *widgets.QTabWidget
 
@@ -88,50 +86,16 @@ type CoreproxyGui struct {
 	Drop                    func(bool)
 }
 
-/*
- TableBridge is meant to expose QML signals from the tableview implemented in
- QML.  This is a very ugly workaround, but I want to use QML only for the table
- since it seems to perform better.
-*/
-
-type TableBridge struct {
-	qtcore.QObject
-
-	_ func(int)         `signal:"clicked,auto"`
-	_ func(string, int) `signal:"rightItemClicked,auto"`
-
-	coreGui *CoreproxyGui
-}
-
-func (t *TableBridge) setParent(p *CoreproxyGui) {
-	t.coreGui = p
-}
-
-func (t *TableBridge) clicked(r int) {
-	if t.coreGui != nil {
-		t.coreGui.RowClicked(r)
-	}
-}
-
-func (t *TableBridge) rightItemClicked(l string, r int) {
-	t.coreGui.RightItemClicked(l, r)
-}
-
 func NewCoreproxyGui(s *core.Session) *CoreproxyGui {
 	return &CoreproxyGui{
-		RightItemLabels: []string{
-			CopyURLLabel,
-			CopyBaseURLLabel,
-			ClearHistoryLabel,
-			SendToRepeaterLabel,
-		},
-		Sess:        s,
-		tableBridge: NewTableBridge(nil),
-		view:        quick.NewQQuickView(nil),
+		Sess:             s,
+		historyTableView: widgets.NewQTableView(nil),
+		view:             quick.NewQQuickView(nil),
+		rightClickLabels: [4]string{CopyURLLabel, CopyBaseURLLabel, RepeatLabel, ClearHistoryLabel},
 	}
 }
 
-func (g *CoreproxyGui) intercetorTabGui() widgets.QWidget_ITF {
+func (g *CoreproxyGui) interceptorTabGui() widgets.QWidget_ITF {
 	widget := widgets.NewQWidget(nil, 0)
 	vlayout := widgets.NewQVBoxLayout()
 	widget.SetLayout(vlayout)
@@ -357,16 +321,20 @@ func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
 }
 
 func (g *CoreproxyGui) SetRightClickMenu() {
-	m := qtcore.NewQStringListModel2(g.RightItemLabels, nil)
-	g.view.RootContext().SetContextProperty("MenuItems", m)
 }
 
 func (g *CoreproxyGui) SetTableModel(m *model.SortFilterModel) {
+	g.historyTableView.SetModel(m)
+	g.historyTableView.SetColumnWidth(model.ID, 40)
+	g.historyTableView.SetColumnWidth(model.Host, 200)
+	g.historyTableView.SetColumnWidth(model.Method, 80)
+	g.historyTableView.SetColumnWidth(model.Path, 200)
+	g.historyTableView.SetColumnWidth(model.Params, 60)
+	g.historyTableView.SetColumnWidth(model.Edit, 60)
+	g.historyTableView.SetColumnWidth(model.Status, 80)
+	g.historyTableView.SetColumnWidth(model.Length, 80)
 	//TODO: move the SetRightClickMenu somewhere that makes sense
 	g.SetRightClickMenu()
-	g.view.RootContext().SetContextProperty("MyModel", m)
-	g.tableBridge.setParent(g)
-	g.view.RootContext().SetContextProperty("tableBridge", g.tableBridge)
 }
 
 func (g *CoreproxyGui) HideAllTabs() {
@@ -396,14 +364,65 @@ func (g *CoreproxyGui) ShowEditedRespTab(edited_resp string) {
 	g.EditedResponseTextEdit.SetPlainText(edited_resp)
 }
 
+func (g *CoreproxyGui) customContextMenuRequested(p *qtcore.QPoint) {
+	if g.contextMenu == nil {
+		g.contextMenu = widgets.NewQMenu(nil)
+		copyURLAction := g.contextMenu.AddAction(CopyURLLabel)
+		copyURLAction.ConnectTriggered(func(b bool) {
+			if len(g.historyTableView.SelectedIndexes()) > 0 {
+				g.RightItemClicked(CopyURLLabel, g.historyTableView.SelectedIndexes()[0].Row())
+			}
+		})
+
+		copyBaseURLAction := g.contextMenu.AddAction(CopyBaseURLLabel)
+		copyBaseURLAction.ConnectTriggered(func(b bool) {
+			if len(g.historyTableView.SelectedIndexes()) > 0 {
+				g.RightItemClicked(CopyBaseURLLabel, g.historyTableView.SelectedIndexes()[0].Row())
+			}
+		})
+
+		repeatAction := g.contextMenu.AddAction(RepeatLabel)
+		repeatAction.ConnectTriggered(func(b bool) {
+			if len(g.historyTableView.SelectedIndexes()) > 0 {
+				g.RightItemClicked(RepeatLabel, g.historyTableView.SelectedIndexes()[0].Row())
+			}
+		})
+
+		clearHistoryAction := g.contextMenu.AddAction(ClearHistoryLabel)
+		clearHistoryAction.ConnectTriggered(func(b bool) {
+			if len(g.historyTableView.SelectedIndexes()) > 0 {
+				g.RightItemClicked(ClearHistoryLabel, g.historyTableView.SelectedIndexes()[0].Row())
+			}
+		})
+
+	}
+	p.SetY(p.Ry() + 15)
+	g.contextMenu.Exec2(g.historyTableView.MapToGlobal(p), nil)
+}
+
 func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
 	g.coreProxyGui = widgets.NewQTabWidget(nil)
 	g.coreProxyGui.SetDocumentMode(true)
 
-	// table view written in qml
-	g.view.SetTitle("tableview Example")
-	g.view.SetResizeMode(quick.QQuickView__SizeRootObjectToView)
-	g.view.SetSource(qtcore.NewQUrl3("qrc:/qml/main.qml", 0))
+	g.historyTableView.SetShowGrid(false)
+	g.historyTableView.VerticalHeader().Hide()
+	g.historyTableView.SetAlternatingRowColors(true)
+	g.historyTableView.ConnectClicked(func(index *qtcore.QModelIndex) {
+		g.RowClicked(index.Row())
+	})
+	//g.historyTableView.ConnectActivated(model.ShowMessage2)
+	g.historyTableView.ConnectCurrentChanged(func(current *qtcore.QModelIndex, prev *qtcore.QModelIndex) {
+		g.historyTableView.ScrollTo(current, 0)
+		g.RowClicked(current.Row())
+	})
+	g.historyTableView.SetEditTriggers(widgets.QAbstractItemView__NoEditTriggers)
+	g.historyTableView.SetSelectionBehavior(widgets.QAbstractItemView__SelectRows)
+	g.historyTableView.SetSelectionMode(widgets.QAbstractItemView__SingleSelection)
+	g.historyTableView.SetContextMenuPolicy(qtcore.Qt__CustomContextMenu)
+	g.historyTableView.ConnectCustomContextMenuRequested(g.customContextMenuRequested)
+	g.historyTableView.SetSortingEnabled(true)
+	g.historyTableView.VerticalHeader().SetSectionResizeMode(widgets.QHeaderView__Fixed)
+	g.historyTableView.VerticalHeader().SetDefaultSectionSize(10)
 
 	// history tab with filters
 	g.historyTab = widgets.NewQTabWidget(nil)
@@ -427,7 +446,7 @@ func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
 	// the splitter for tab history
 	g.splitter = widgets.NewQSplitter(nil)
 	g.splitter.SetOrientation(qtcore.Qt__Vertical)
-	g.splitter.AddWidget(widgets.QWidget_CreateWindowContainer(g.view, nil, 0))
+	g.splitter.AddWidget(g.historyTableView)
 	g.splitter.AddWidget(g.reqRespTab)
 
 	g.historyTab.AddTab(g.splitter, "History")
@@ -443,7 +462,7 @@ func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
 	// g.startBtn = widgets.NewQPushButton2("Start", nil)
 	// g.startBtn.ConnectClicked(g.StartProxy)
 
-	g.coreProxyGui.AddTab(g.intercetorTabGui(), "Interceptor")
+	g.coreProxyGui.AddTab(g.interceptorTabGui(), "Interceptor")
 	g.coreProxyGui.AddTab(g.historyTab, "History")
 	g.coreProxyGui.AddTab(g.settingsTabGui(), "Settings")
 

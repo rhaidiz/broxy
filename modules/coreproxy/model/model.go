@@ -117,7 +117,7 @@ type HttpItem struct {
 // }
 
 const (
-	ID = int(core.Qt__UserRole) + 1<<iota
+	ID = iota
 	Host
 	Method
 	Path
@@ -134,20 +134,6 @@ func (m *CustomTableModel) row(i *HttpItem) int {
 		}
 	}
 	return 0
-}
-
-func (m *CustomTableModel) roleNames() map[int]*core.QByteArray {
-	return map[int]*core.QByteArray{
-		ID:     core.NewQByteArray2("ID", -1),
-		Host:   core.NewQByteArray2("Host", -1),
-		Method: core.NewQByteArray2("Method", -1),
-		Path:   core.NewQByteArray2("Path", -1),
-		Params: core.NewQByteArray2("Params", -1),
-		Edit:   core.NewQByteArray2("Edit", -1),
-		Status: core.NewQByteArray2("Status", -1),
-		Length: core.NewQByteArray2("Length", -1),
-		//LastName:  core.NewQByteArray2("LastName", -1),
-	}
 }
 
 type CustomTableModel struct {
@@ -176,11 +162,35 @@ func (m *CustomTableModel) init() {
 	m.modelData = []HttpItem{}
 	m.hashMap = make(map[int64]*HttpItem)
 
-	m.ConnectRoleNames(m.roleNames)
-	//m.ConnectHeaderData(m.headerData)
+	m.ConnectHeaderData(m.headerData)
 	m.ConnectRowCount(m.rowCount)
 	m.ConnectColumnCount(m.columnCount)
 	m.ConnectData(m.data)
+}
+
+func (m *CustomTableModel) headerData(section int, orientation core.Qt__Orientation, role int) *core.QVariant {
+	if role != int(core.Qt__DisplayRole) || orientation == core.Qt__Vertical {
+		return m.HeaderDataDefault(section, orientation, role)
+	}
+	switch section {
+	case ID:
+		return core.NewQVariant1("ID")
+	case Host:
+		return core.NewQVariant1("Host")
+	case Method:
+		return core.NewQVariant1("Method")
+	case Path:
+		return core.NewQVariant1("Path")
+	case Params:
+		return core.NewQVariant1("Params")
+	case Edit:
+		return core.NewQVariant1("Edit")
+	case Status:
+		return core.NewQVariant1("Status")
+	case Length:
+		return core.NewQVariant1("Length")
+	}
+	return core.NewQVariant()
 }
 
 func (m *CustomTableModel) GetReqResp(i int) (*Request, *Request, *Response, *Response) {
@@ -236,11 +246,15 @@ func (m *CustomTableModel) rowCount(*core.QModelIndex) int {
 }
 
 func (m *CustomTableModel) columnCount(*core.QModelIndex) int {
-	return 5
+	return 8
 }
 func (m *CustomTableModel) data(index *core.QModelIndex, role int) *core.QVariant {
+	if role != int(core.Qt__DisplayRole) {
+		return core.NewQVariant()
+	}
+
 	item := m.modelData[index.Row()]
-	switch role {
+	switch index.Column() {
 	case ID:
 		return core.NewQVariant1(item.ID)
 	case Host:
