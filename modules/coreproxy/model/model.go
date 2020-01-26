@@ -10,10 +10,10 @@ import (
 )
 
 type Request struct {
+	Url           *url.URL
 	Proto         string
 	Method        string
-	Path          string
-	Schema        string
+	QueryString   string
 	Host          string
 	Headers       http.Header
 	ContentLength int64
@@ -32,11 +32,8 @@ func (r *Request) ToString() string {
 	if r == nil {
 		return ""
 	}
-	path, err := url.Parse(r.Path)
-	if err != nil {
-		return "Url parser error"
-	}
-	ret := fmt.Sprintf("%s %s %s\nHost: %s\n", r.Method, path, r.Proto, r.Host)
+	u1 := fmt.Sprintf("%v", r.Url)
+	ret := fmt.Sprintf("%s %s %s\nHost: %s\n", r.Method, u1[len(r.Url.Scheme)+2:], r.Proto, r.Host)
 	for k, v := range r.Headers {
 		values := ""
 		for _, s := range v {
@@ -269,10 +266,9 @@ func (m *CustomTableModel) data(index *core.QModelIndex, role int) *core.QVarian
 	case Method:
 		return core.NewQVariant1(item.Req.Method)
 	case Path:
-		return core.NewQVariant1(item.Req.Path)
+		return core.NewQVariant1(item.Req.Url.Path)
 	case Params:
-		//TODO fix me
-		if false {
+		if len(item.Req.QueryString) > 0 {
 			return core.NewQVariant1("✓")
 		}
 		return core.NewQVariant1("")

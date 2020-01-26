@@ -3,12 +3,13 @@ package repeater
 import (
 	"bufio"
 	"fmt"
-	"github.com/rhaidiz/broxy/core"
-	"github.com/rhaidiz/broxy/modules/coreproxy/model"
-	"github.com/rhaidiz/broxy/util"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/rhaidiz/broxy/core"
+	"github.com/rhaidiz/broxy/modules/coreproxy/model"
+	"github.com/rhaidiz/broxy/util"
 )
 
 type RepeaterController struct {
@@ -44,7 +45,7 @@ func (c *RepeaterController) ExecCommand(m string, args ...interface{}) {
 	if m == "send-to" {
 		r := args[0].(*model.Request)
 		print(r.Host)
-		c.Gui.AddNewTab(fmt.Sprintf("%s://%s", r.Schema, r.Host), fmt.Sprintf("%s\n", r.ToString()))
+		c.Gui.AddNewTab(fmt.Sprintf("%s://%s", r.Url.Scheme, r.Host), fmt.Sprintf("%s\n", r.ToString()))
 	}
 }
 

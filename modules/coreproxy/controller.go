@@ -109,9 +109,9 @@ func (c *CoreproxyController) rightItemClicked(s string, r int) {
 	actual_row := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
 	req, _, _, _ := c.model.Custom.GetReqResp(actual_row - 1)
 	if s == CopyURLLabel {
-		clipboard.SetText(fmt.Sprintf("%s://%s%s", req.Schema, req.Host, req.Path), gui.QClipboard__Clipboard)
+		clipboard.SetText(fmt.Sprintf("%s://%s%s", req.Url.Scheme, req.Host, req.Url.Path), gui.QClipboard__Clipboard)
 	} else if s == CopyBaseURLLabel {
-		clipboard.SetText(fmt.Sprintf("%s://%s", req.Schema, req.Host), gui.QClipboard__Clipboard)
+		clipboard.SetText(fmt.Sprintf("%s://%s", req.Url.Scheme, req.Host), gui.QClipboard__Clipboard)
 	} else if s == RepeatLabel {
 		// FIXME: I **really** don't like this
 		c.Sess.Exec("repeater", "send-to", req)
@@ -318,8 +318,8 @@ func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 	}
 	// this is the original request, save it for the history
 	http_item.Req = &model.Request{
-		Path:          r.URL.Path,
-		Schema:        r.URL.Scheme,
+		Url:           r.URL,
+		QueryString:   r.URL.RawQuery,
 		Method:        r.Method,
 		Body:          bodyBytes,
 		Host:          r.Host,
@@ -327,6 +327,10 @@ func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 		Headers:       cloneHeaders(r.Header),
 		Proto:         r.Proto,
 		Extension:     ext,
+	}
+
+	if len(http_item.Req.QueryString) > 0 {
+		fmt.Println("Query string: %s", http_item.Req.QueryString)
 	}
 
 	// activate interceptor
@@ -347,8 +351,7 @@ func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 			}
 
 			http_item.EditedReq = &model.Request{
-				Path:          edited_req.URL.Path,
-				Schema:        edited_req.URL.Scheme,
+				Url:           edited_req.URL,
 				Method:        edited_req.Method,
 				Body:          edited_bodyBytes,
 				Host:          edited_req.Host,
