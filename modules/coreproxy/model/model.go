@@ -249,6 +249,13 @@ func (m *CustomTableModel) columnCount(*core.QModelIndex) int {
 	return 8
 }
 func (m *CustomTableModel) data(index *core.QModelIndex, role int) *core.QVariant {
+	if role == int(core.Qt__TextAlignmentRole) &&
+		(index.Column() == Method ||
+			index.Column() == Params ||
+			index.Column() == Edit ||
+			index.Column() == Length) {
+		return core.NewQVariant1(int64(core.Qt__AlignCenter))
+	}
 	if role != int(core.Qt__DisplayRole) {
 		return core.NewQVariant()
 	}
