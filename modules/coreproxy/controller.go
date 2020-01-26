@@ -323,7 +323,6 @@ func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 	// this is the original request, save it for the history
 	http_item.Req = &model.Request{
 		Url:           r.URL,
-		QueryString:   r.URL.RawQuery,
 		Method:        r.Method,
 		Body:          bodyBytes,
 		Host:          r.Host,

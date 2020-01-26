@@ -13,7 +13,6 @@ type Request struct {
 	Url           *url.URL
 	Proto         string
 	Method        string
-	QueryString   string
 	Host          string
 	Headers       http.Header
 	ContentLength int64
