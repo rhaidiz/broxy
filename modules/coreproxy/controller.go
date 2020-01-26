@@ -316,6 +316,10 @@ func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 	if len(matches) >= 1 {
 		ext = matches[1]
 	}
+	params := false
+	if len(r.URL.RawQuery) > 0 || len(bodyBytes) > 0 {
+		params = true
+	}
 	// this is the original request, save it for the history
 	http_item.Req = &model.Request{
 		Url:           r.URL,
@@ -327,10 +331,7 @@ func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 		Headers:       cloneHeaders(r.Header),
 		Proto:         r.Proto,
 		Extension:     ext,
-	}
-
-	if len(http_item.Req.QueryString) > 0 {
-		fmt.Println("Query string: %s", http_item.Req.QueryString)
+		Params:        params,
 	}
 
 	// activate interceptor

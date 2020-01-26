@@ -19,6 +19,7 @@ type Request struct {
 	ContentLength int64
 	Body          []byte
 	Extension     string
+	Params        bool
 }
 
 func (r *Request) ToString() string {
@@ -268,7 +269,7 @@ func (m *CustomTableModel) data(index *core.QModelIndex, role int) *core.QVarian
 	case Path:
 		return core.NewQVariant1(item.Req.Url.Path)
 	case Params:
-		if len(item.Req.QueryString) > 0 {
+		if item.Req.Params {
 			return core.NewQVariant1("✓")
 		}
 		return core.NewQVariant1("")
