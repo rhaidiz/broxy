@@ -68,7 +68,7 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 	c.Gui.ControllerInit = c.initUIContent
 	c.Gui.CheckReqInterception = c.checkReqInterception
 	c.Gui.CheckRespInterception = c.checkRespInterception
-	c.Gui.DownloadCAClicked = c.downloadCAClicked
+	c.Gui.SaveCAClicked = c.downloadCAClicked
 	c.Gui.RightItemClicked = c.rightItemClicked
 	return c
 }
