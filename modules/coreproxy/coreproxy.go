@@ -113,10 +113,10 @@ func (p *Coreproxy) Stop() error {
 
 func (p *Coreproxy) onReqDef(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 	r1, rsp := p.OnReq(r, ctx)
-	ctx.RoundTripper = goproxy.RoundTripperFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (resp *http.Response, err error) {
-		ctx.UserData, resp, err = p.tr.DetailedRoundTrip(req)
-		return
-	})
+	// ctx.RoundTripper = goproxy.RoundTripperFunc(func(req *http.Request, ctx *goproxy.ProxyCtx) (resp *http.Response, err error) {
+	// 	ctx.UserData, resp, err = p.tr.DetailedRoundTrip(req)
+	// 	return
+	// })
 	return r1, rsp
 }
 
