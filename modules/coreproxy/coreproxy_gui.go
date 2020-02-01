@@ -34,7 +34,7 @@ type CoreproxyGui struct {
 	ResetFilters          func(bool)
 	CheckReqInterception  func(bool)
 	CheckRespInterception func(bool)
-	DownloadCAClicked     func(bool)
+	SaveCAClicked         func(bool)
 	RightItemClicked      func(string, int)
 	settingsTab           *widgets.QTabWidget
 
@@ -74,7 +74,7 @@ type CoreproxyGui struct {
 	StartStopButton       *widgets.QPushButton
 	ReqInterceptCheckBox  *widgets.QCheckBox
 	RespInterceptCheckBox *widgets.QCheckBox
-	DownloadCAButton      *widgets.QPushButton
+	SaveCAButton          *widgets.QPushButton
 
 	// interceptor
 	ForwardButton           *widgets.QPushButton
@@ -310,9 +310,9 @@ func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
 	label_ca.SetFont(font)
 	vlayout1.AddWidget(label_ca, 0, qtcore.Qt__AlignLeft)
 
-	g.DownloadCAButton = widgets.NewQPushButton2("Download CA certificate", nil)
-	g.DownloadCAButton.ConnectClicked(g.DownloadCAClicked)
-	vlayout1.AddWidget(g.DownloadCAButton, 0, qtcore.Qt__AlignLeft)
+	g.SaveCAButton = widgets.NewQPushButton2("Save CA certificate", nil)
+	g.SaveCAButton.ConnectClicked(g.SaveCAClicked)
+	vlayout1.AddWidget(g.SaveCAButton, 0, qtcore.Qt__AlignLeft)
 
 	spacerItem1 := widgets.NewQSpacerItem(20, 40, widgets.QSizePolicy__Minimum, widgets.QSizePolicy__Expanding)
 	vlayout1.AddItem(spacerItem1)
