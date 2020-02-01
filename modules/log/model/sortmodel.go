@@ -14,16 +14,12 @@ type SortFilterModel struct {
 	_ func(column string, order core.Qt__SortOrder) `signal:"sortTableView"`
 }
 
-func init() {
-	CustomTableModel_QmlRegisterType2("CustomQmlTypes", 1, 0, "SortFilterModel")
-}
-
 func (m *SortFilterModel) init() {
 	m.Custom = NewCustomTableModel(nil)
 
 	m.SetSourceModel(m.Custom)
-	m.SetSortRole(Time)
-	m.Sort(0, core.Qt__DescendingOrder)
+	// m.SetSortRole(Time)
+	// m.Sort(0, core.Qt__DescendingOrder)
 
 	m.ConnectSortTableView(m.sortTableView)
 	//return SortFilterModel.QAbstractItemModel_PTR()

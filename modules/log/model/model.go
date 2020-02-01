@@ -8,20 +8,11 @@ import (
 )
 
 const (
-	Type = int(core.Qt__UserRole) + 1<<iota
+	Type = iota
 	Module
 	Time
 	Message
 )
-
-func (m *CustomTableModel) roleNames() map[int]*core.QByteArray {
-	return map[int]*core.QByteArray{
-		Type:    core.NewQByteArray2("Type", -1),
-		Module:  core.NewQByteArray2("Module", -1),
-		Time:    core.NewQByteArray2("Time", -1),
-		Message: core.NewQByteArray2("Message", -1),
-	}
-}
 
 type CustomTableModel struct {
 	core.QAbstractTableModel
@@ -38,8 +29,8 @@ var mutex = &sync.Mutex{}
 func (m *CustomTableModel) init() {
 	m.modelData = []bcore.Log{}
 
-	m.ConnectRoleNames(m.roleNames)
 	m.ConnectRowCount(m.rowCount)
+	m.ConnectHeaderData(m.headerData)
 	m.ConnectColumnCount(m.columnCount)
 	m.ConnectData(m.data)
 }
@@ -59,9 +50,34 @@ func (m *CustomTableModel) rowCount(*core.QModelIndex) int {
 func (m *CustomTableModel) columnCount(*core.QModelIndex) int {
 	return 4
 }
+
+func (m *CustomTableModel) headerData(section int, orientation core.Qt__Orientation, role int) *core.QVariant {
+	if role != int(core.Qt__DisplayRole) || orientation == core.Qt__Vertical {
+		return m.HeaderDataDefault(section, orientation, role)
+	}
+	switch section {
+	case Type:
+		return core.NewQVariant1("Type")
+	case Module:
+		return core.NewQVariant1("Module")
+	case Time:
+		return core.NewQVariant1("Time")
+	case Message:
+		return core.NewQVariant1("Message")
+	}
+	return core.NewQVariant()
+}
+
 func (m *CustomTableModel) data(index *core.QModelIndex, role int) *core.QVariant {
+	if role == int(core.Qt__TextAlignmentRole) &&
+		(index.Column() == Type) {
+		return core.NewQVariant1(int64(core.Qt__AlignCenter))
+	}
+	if role != int(core.Qt__DisplayRole) {
+		return core.NewQVariant()
+	}
 	item := m.modelData[index.Row()]
-	switch role {
+	switch index.Column() {
 	case Type:
 		return core.NewQVariant1(item.Type)
 	case Module:
