@@ -1,10 +1,11 @@
 package repeater
 
 import (
+	"strconv"
+
 	"github.com/rhaidiz/broxy/core"
 	qtcore "github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
-	"strconv"
 )
 
 type RepeaterGui struct {
@@ -14,6 +15,7 @@ type RepeaterGui struct {
 	repeaterTabs *widgets.QTabWidget
 	tabs         []*RepeaterTab
 	tabNum       int
+	tabRemoved   bool
 
 	GoClick func(*RepeaterTab)
 	_       func(i int) `signal:"changedTab"`
@@ -28,7 +30,7 @@ type RepeaterTab struct {
 }
 
 func NewRepeaterGui(s *core.Session) *RepeaterGui {
-	return &RepeaterGui{Sess: s, tabNum: 1}
+	return &RepeaterGui{Sess: s, tabNum: 1, tabRemoved: false}
 }
 
 func (g *RepeaterGui) GetModuleGui() widgets.QWidget_ITF {
@@ -36,6 +38,8 @@ func (g *RepeaterGui) GetModuleGui() widgets.QWidget_ITF {
 	g.repeaterTabs = widgets.NewQTabWidget(nil)
 	g.repeaterTabs.SetDocumentMode(true)
 	g.repeaterTabs.ConnectCurrentChanged(g.changedTab)
+	g.repeaterTabs.SetTabsClosable(true)
+	g.repeaterTabs.ConnectTabCloseRequested(g.handleClose)
 
 	//g.repeaterTabs.AddTab(g.NewTab(), strconv.Itoa(g.tabNum))
 	g.repeaterTabs.AddTab(g.NewEmptyTab(), "+")
@@ -44,14 +48,21 @@ func (g *RepeaterGui) GetModuleGui() widgets.QWidget_ITF {
 
 }
 
+func (g *RepeaterGui) handleClose(index int) {
+	g.tabRemoved = true
+	g.repeaterTabs.RemoveTab(index)
+}
+
 func (g *RepeaterGui) changedTab(i int) {
-	g.Sess.Debug("repeater", strconv.Itoa(i))
-	if i == g.repeaterTabs.Count()-1 {
+	if i == g.repeaterTabs.Count()-1 && g.tabRemoved && g.repeaterTabs.Count() > 1 {
+		g.repeaterTabs.SetCurrentIndex(i - 1)
+	} else if i == g.repeaterTabs.Count()-1 {
 		// add a new tab before me
 		g.repeaterTabs.InsertTab(g.repeaterTabs.Count()-1, g.NewEmptyTab(), strconv.Itoa(g.tabNum))
 		g.tabNum = g.tabNum + 1
 		g.repeaterTabs.SetCurrentIndex(g.repeaterTabs.Count() - 2)
 	}
+	g.tabRemoved = false
 }
 
 func (g *RepeaterGui) AddNewTab(host string, request string) {
