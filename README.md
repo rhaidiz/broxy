@@ -19,7 +19,7 @@ Broxy is currently a work in progress project. The current version provides the 
 # Installation
 
 ## Grab a Binary
-Grab a compiled version of Broxy [here](https://github.com/rhaidiz/broxy/releases) (windows binary on its way).
+Grab a compiled version of Broxy [here](https://github.com/rhaidiz/broxy/releases).
 
 ## Compiling from Sources
 To compile Broxy make sure you have the following installed and properly configured:
