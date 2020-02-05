@@ -24,9 +24,10 @@ type CoreproxyController struct {
 	Sess   *core.Session
 	filter *model.Filter
 
-	isRunning bool
-	model     *model.SortFilterModel
-	id        int
+	isRunning   bool
+	model       *model.SortFilterModel
+	id          int
+	ignoreHTTPS bool
 
 	forward_chan chan bool
 	drop_chan    chan bool
@@ -46,6 +47,7 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 		Sess:            s,
 		isRunning:       false,
 		id:              0,
+		ignoreHTTPS:     false,
 		forward_chan:    make(chan bool),
 		drop_chan:       make(chan bool),
 		requests_queue:  0,
@@ -57,6 +59,7 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 	c.model = model.NewSortFilterModel(nil)
 	c.Module.OnReq = c.onReq
 	c.Module.OnResp = c.onResp
+	c.Module.Proxyh.OnRequest().HandleConnect(goproxy.FuncHttpsHandler(c.broxyConnectHandle))
 	c.Gui.SetTableModel(c.model)
 	c.Gui.StartProxy = c.startProxy
 	c.Gui.RowClicked = c.selectRow
@@ -70,6 +73,7 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 	c.Gui.CheckRespInterception = c.checkRespInterception
 	c.Gui.SaveCAClicked = c.downloadCAClicked
 	c.Gui.RightItemClicked = c.rightItemClicked
+	c.Gui.CheckIgnoreHTTPS = c.ignoreHTTPSToggle
 	return c
 }
 
@@ -371,4 +375,15 @@ func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 	c.model.Custom.AddItem(http_item, ctx.Session)
 
 	return r, resp
+}
+
+func (c *CoreproxyController) ignoreHTTPSToggle(b bool) {
+	c.ignoreHTTPS = !c.ignoreHTTPS
+}
+
+func (c *CoreproxyController) broxyConnectHandle(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
+	if c.ignoreHTTPS {
+		return goproxy.OkConnect, host
+	}
+	return goproxy.MitmConnect, host
 }

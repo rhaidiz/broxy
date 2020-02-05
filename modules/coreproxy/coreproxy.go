@@ -52,7 +52,7 @@ func NewCoreProxy(s *core.Session) *Coreproxy {
 	}
 
 	// enable always HTTPS mitm
-	p.Proxyh.OnRequest().HandleConnect(goproxy.AlwaysMitm)
+	//p.Proxyh.OnRequest().HandleConnect(goproxy.AlwaysMitm)
 
 	// set the default behavior onReq\Resp
 	p.Proxyh.OnRequest().DoFunc(p.onReqDef)

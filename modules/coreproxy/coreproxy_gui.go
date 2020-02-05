@@ -34,6 +34,7 @@ type CoreproxyGui struct {
 	ResetFilters          func(bool)
 	CheckReqInterception  func(bool)
 	CheckRespInterception func(bool)
+	CheckIgnoreHTTPS      func(bool)
 	SaveCAClicked         func(bool)
 	RightItemClicked      func(string, int)
 	settingsTab           *widgets.QTabWidget
@@ -75,6 +76,7 @@ type CoreproxyGui struct {
 	ReqInterceptCheckBox  *widgets.QCheckBox
 	RespInterceptCheckBox *widgets.QCheckBox
 	SaveCAButton          *widgets.QPushButton
+	ignoreHTTPSCheckBox   *widgets.QCheckBox
 
 	// interceptor
 	ForwardButton           *widgets.QPushButton
@@ -313,6 +315,11 @@ func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
 	g.SaveCAButton = widgets.NewQPushButton2("Save CA certificate", nil)
 	g.SaveCAButton.ConnectClicked(g.SaveCAClicked)
 	vlayout1.AddWidget(g.SaveCAButton, 0, qtcore.Qt__AlignLeft)
+
+	g.ignoreHTTPSCheckBox = widgets.NewQCheckBox(nil)
+	g.ignoreHTTPSCheckBox.SetText("Do not intercept HTTPS")
+	g.ignoreHTTPSCheckBox.ConnectClicked(g.CheckIgnoreHTTPS)
+	vlayout1.AddWidget(g.ignoreHTTPSCheckBox, 0, qtcore.Qt__AlignLeft)
 
 	spacerItem1 := widgets.NewQSpacerItem(20, 40, widgets.QSizePolicy__Minimum, widgets.QSizePolicy__Expanding)
 	vlayout1.AddItem(spacerItem1)
