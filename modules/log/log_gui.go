@@ -37,7 +37,6 @@ func (g *LogGui) GetModuleGui() widgets.QWidget_ITF {
 	widget := widgets.NewQWidget(nil, 0)
 	widget.SetLayout(widgets.NewQVBoxLayout())
 
-	// table view written in qml
 	g.view.SetTitle("Log table")
 	g.view.SetResizeMode(quick.QQuickView__SizeRootObjectToView)
 	g.logTableView.SetShowGrid(false)
@@ -50,9 +49,7 @@ func (g *LogGui) GetModuleGui() widgets.QWidget_ITF {
 	g.logTableView.SetSortingEnabled(true)
 	g.logTableView.VerticalHeader().SetDefaultSectionSize(10)
 	g.logTableView.SortByColumn(model.Time, qtcore.Qt__DescendingOrder)
-	//g.view.SetSource(qtcore.NewQUrl3("qrc:/qml/log.qml", 0))
 
-	//widget.Layout().AddWidget(widgets.QWidget_CreateWindowContainer(g.view, nil, 0))
 	widget.Layout().AddWidget(g.logTableView)
 
 	return widget

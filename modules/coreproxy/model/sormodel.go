@@ -1,8 +1,9 @@
 package model
 
 import (
-	"github.com/therecipe/qt/core"
 	"strings"
+
+	"github.com/therecipe/qt/core"
 )
 
 type SortFilterModel struct {
@@ -15,10 +16,6 @@ type SortFilterModel struct {
 	_ func() `constructor:"init"`
 
 	_ func(column string, order core.Qt__SortOrder) `signal:"sortTableView"`
-}
-
-func init() {
-	CustomTableModel_QmlRegisterType2("CustomQmlTypes", 1, 0, "SortFilterModel")
 }
 
 func (m *SortFilterModel) init() {

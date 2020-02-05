@@ -147,14 +147,6 @@ type CustomTableModel struct {
 
 var mutex = &sync.Mutex{}
 
-//func (m *CustomTableModel) GetIndex(i int) *HttpItem {
-//	return &m.modelData[i]
-//}
-
-func init() {
-	CustomTableModel_QmlRegisterType2("CustomQmlTypes", 1, 0, "CustomTableModel")
-}
-
 func (m *CustomTableModel) init() {
 	m.modelData = []HttpItem{}
 	m.hashMap = make(map[int64]*HttpItem)
