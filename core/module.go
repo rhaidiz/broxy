@@ -13,14 +13,15 @@ type Module interface {
 	Stop() error
 }
 
+// GuiModule interface
 type GuiModule interface {
 	GetModuleGui() widgets.QWidget_ITF
-	Name() string
+	Title() string
 }
 
+// ControllerModule interface
 type ControllerModule interface {
 	ExecCommand(string, ...interface{})
 	GetModule() Module
 	GetGui() GuiModule
-	Name() string
 }

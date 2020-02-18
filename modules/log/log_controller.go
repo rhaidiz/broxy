@@ -3,9 +3,9 @@ package log
 import (
 	"github.com/rhaidiz/broxy/core"
 	"github.com/rhaidiz/broxy/modules/log/model"
-	_ "github.com/therecipe/qt/core"
 )
 
+// LogController represents the controller of the log module
 type LogController struct {
 	core.ControllerModule
 	Module *Log
@@ -16,6 +16,7 @@ type LogController struct {
 	modelSort *model.SortFilterModel
 }
 
+// NewLogController returns a controller of the log module
 func NewLogController(m *Log, g *LogGui, s *core.Session) *LogController {
 	c := &LogController{
 		Module: m,
@@ -31,18 +32,17 @@ func NewLogController(m *Log, g *LogGui, s *core.Session) *LogController {
 	return c
 }
 
+// GetGui returns the Gui of the log module
 func (c *LogController) GetGui() core.GuiModule {
 	return c.Gui
 }
 
+// GetModule returns the module of the log module
 func (c *LogController) GetModule() core.Module {
 	return c.Module
 }
 
-func (c *LogController) Name() string {
-	return "log"
-}
-
+// ExecCommand execs commands submitted by other modules
 func (c *LogController) ExecCommand(m string, args ...interface{}) {
 
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/therecipe/qt/gui"
 )
 
+// CoreproxyController represents the controller for the main intercetp proxy
 type CoreproxyController struct {
 	core.ControllerModule
 	Module *Coreproxy
@@ -29,31 +30,32 @@ type CoreproxyController struct {
 	id          int
 	ignoreHTTPS bool
 
-	forward_chan chan bool
-	drop_chan    chan bool
+	forwardChan chan bool
+	dropChan    chan bool
 	// will maintain the number of requests in queue
-	requests_queue  int
-	responses_queue int
+	requestsQueue  int
+	responsesQueue int
 
 	dropped map[int64]bool
 }
 
 var mutex = &sync.Mutex{}
 
+// NewCoreproxyController creates a new controller for the core intercetp proxy
 func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Session) *CoreproxyController {
 	c := &CoreproxyController{
-		Module:          proxy,
-		Gui:             proxygui,
-		Sess:            s,
-		isRunning:       false,
-		id:              0,
-		ignoreHTTPS:     false,
-		forward_chan:    make(chan bool),
-		drop_chan:       make(chan bool),
-		requests_queue:  0,
-		responses_queue: 0,
-		dropped:         make(map[int64]bool),
-		filter:          &model.Filter{},
+		Module:         proxy,
+		Gui:            proxygui,
+		Sess:           s,
+		isRunning:      false,
+		id:             0,
+		ignoreHTTPS:    false,
+		forwardChan:    make(chan bool),
+		dropChan:       make(chan bool),
+		requestsQueue:  0,
+		responsesQueue: 0,
+		dropped:        make(map[int64]bool),
+		filter:         &model.Filter{},
 	}
 
 	c.model = model.NewSortFilterModel(nil)
@@ -77,23 +79,21 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 	return c
 }
 
+// GetGui returns the Gui of the current controller
 func (c *CoreproxyController) GetGui() core.GuiModule {
 	return c.Gui
 }
 
-func (c *CoreproxyController) Name() string {
-	return "coreproxy"
-}
-
+// GetModule returns the module of the current controller
 func (c *CoreproxyController) GetModule() core.Module {
 	return c.Module
 }
 
+// ExecCommand execs commands submitted by other modules
 func (c *CoreproxyController) ExecCommand(m string, args ...interface{}) {
 
 }
 
-// init UI content
 func (c *CoreproxyController) initUIContent() {
 	c.setDefaultFilter()
 	c.Gui.ListenerLineEdit.SetText(fmt.Sprintf("%s:%d", c.Sess.Config.Address, c.Sess.Config.Port))
@@ -110,12 +110,12 @@ func (c *CoreproxyController) initUIContent() {
 
 func (c *CoreproxyController) rightItemClicked(s string, r int) {
 	clipboard := c.Sess.QApp.Clipboard()
-	actual_row := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
-	req, _, _, _ := c.model.Custom.GetReqResp(actual_row - 1)
+	actualRow := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
+	req, _, _, _ := c.model.Custom.GetReqResp(actualRow - 1)
 	if s == CopyURLLabel {
-		clipboard.SetText(fmt.Sprintf("%s://%s%s", req.Url.Scheme, req.Host, req.Url.Path), gui.QClipboard__Clipboard)
+		clipboard.SetText(fmt.Sprintf("%s://%s%s", req.URL.Scheme, req.Host, req.URL.Path), gui.QClipboard__Clipboard)
 	} else if s == CopyBaseURLLabel {
-		clipboard.SetText(fmt.Sprintf("%s://%s", req.Url.Scheme, req.Host), gui.QClipboard__Clipboard)
+		clipboard.SetText(fmt.Sprintf("%s://%s", req.URL.Scheme, req.Host), gui.QClipboard__Clipboard)
 	} else if s == RepeatLabel {
 		// FIXME: I **really** don't like this
 		c.Sess.Exec("repeater", "send-to", req)
@@ -173,16 +173,16 @@ func (c *CoreproxyController) applyFilter(b bool) {
 	// this also looks bad, creating a new status each time and replacing it ... bleah ...
 	//IMP: make me pretier
 	c.filter.StatusCode = status
-	c.filter.Show_ext = make(map[string]bool)
+	c.filter.ShowExt = make(map[string]bool)
 	if c.Gui.ShowOnlyCheckBox.IsChecked() {
 		for _, e := range strings.Split(strings.Replace(c.Gui.ShowExtensionLineEdit.DisplayText(), " ", "", -1), ",") {
-			c.filter.Show_ext[e] = true
+			c.filter.ShowExt[e] = true
 		}
 	}
-	c.filter.Hide_ext = make(map[string]bool)
+	c.filter.HideExt = make(map[string]bool)
 	if c.Gui.HideOnlyCheckBox.IsChecked() {
 		for _, e := range strings.Split(strings.Replace(c.Gui.HideExtensionLineEdit.DisplayText(), " ", "", -1), ",") {
-			c.filter.Hide_ext[e] = true
+			c.filter.HideExt[e] = true
 		}
 	}
 	c.model.SetFilter(c.filter)
@@ -194,19 +194,19 @@ func (c *CoreproxyController) resetFilter(b bool) {
 
 func (c *CoreproxyController) selectRow(r int) {
 	c.Gui.HideAllTabs()
-	actual_row := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
-	req, edited_req, resp, edited_resp := c.model.Custom.GetReqResp(actual_row - 1)
+	actualRow := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
+	req, editedReq, resp, editedResp := c.model.Custom.GetReqResp(actualRow - 1)
 	if req != nil {
 		c.Gui.ShowReqTab(req.ToString())
 	}
-	if edited_req != nil {
-		c.Gui.ShowEditedReqTab(edited_req.ToString())
+	if editedReq != nil {
+		c.Gui.ShowEditedReqTab(editedReq.ToString())
 	}
 	if resp != nil {
 		c.Gui.ShowRespTab(resp.ToString())
 	}
-	if edited_resp != nil {
-		c.Gui.ShowEditedRespTab(edited_resp.ToString())
+	if editedResp != nil {
+		c.Gui.ShowEditedRespTab(editedResp.ToString())
 	}
 }
 
@@ -214,13 +214,13 @@ func (c *CoreproxyController) startProxy(b bool) {
 
 	if !c.isRunning {
 		// Start and stop the proxy
-		ip_port_regxp := "^((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)):(6553[0-5]|655[0-2][0-9]|65[0-4][0-9][0-9]|6[0-4][0-9][0-9][0-9]|[1-5]?[0-9]?[0-9]?[0-9]?[0-9])?$"
+		IPPortReg := "^((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)):(6553[0-5]|655[0-2][0-9]|65[0-4][0-9][0-9]|6[0-4][0-9][0-9][0-9]|[1-5]?[0-9]?[0-9]?[0-9]?[0-9])?$"
 
-		r := regexp.MustCompile(ip_port_regxp)
+		r := regexp.MustCompile(IPPortReg)
 
 		if s := r.FindStringSubmatch(c.Gui.ListenerLineEdit.DisplayText()); s != nil {
 			p, _ := strconv.Atoi(s[2])
-			if e := c.Module.ChangeIpPort(s[1], p); e == nil {
+			if e := c.Module.ChangeIPPort(s[1], p); e == nil {
 				// if I can change ip and port, change it also in the config struct
 				c.Sess.Config.Address = s[1]
 				c.Sess.Config.Port = p
@@ -254,7 +254,7 @@ func (c *CoreproxyController) startProxy(b bool) {
 // Executed when a response arrives
 func (c *CoreproxyController) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 
-	http_item := model.NewHttpItem(nil)
+	httpItem := model.NewHTTPItem(nil)
 
 	var bodyBytes []byte
 	if r != nil {
@@ -262,7 +262,7 @@ func (c *CoreproxyController) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 		// Restore the io.ReadCloser to its original state
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
-	http_item.Resp = &model.Response{
+	httpItem.Resp = &model.Response{
 		Status:        r.Status,
 		StatusCode:    r.StatusCode,
 		Body:          bodyBytes,
@@ -276,27 +276,27 @@ func (c *CoreproxyController) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 		// if the response is nil, it means the interceptor did not change the response
 
 		r.ContentLength = int64(len(bodyBytes))
-		edited_resp := c.interceptorResponseActions(ctx.Req, r)
+		editedResp := c.interceptorResponseActions(ctx.Req, r)
 		// the response was edited
-		if edited_resp != nil {
-			var edited_bodyBytes []byte
-			edited_bodyBytes, _ = ioutil.ReadAll(edited_resp.Body)
-			edited_resp.Body = ioutil.NopCloser(bytes.NewBuffer(edited_bodyBytes))
-			http_item.EditedResp = &model.Response{
-				Status:        edited_resp.Status,
-				StatusCode:    edited_resp.StatusCode,
-				Proto:         edited_resp.Proto,
-				Body:          edited_bodyBytes,
-				ContentLength: int64(len(edited_bodyBytes)),
-				Headers:       cloneHeaders(edited_resp.Header),
+		if editedResp != nil {
+			var editedBodyBytes []byte
+			editedBodyBytes, _ = ioutil.ReadAll(editedResp.Body)
+			editedResp.Body = ioutil.NopCloser(bytes.NewBuffer(editedBodyBytes))
+			httpItem.EditedResp = &model.Response{
+				Status:        editedResp.Status,
+				StatusCode:    editedResp.StatusCode,
+				Proto:         editedResp.Proto,
+				Body:          editedBodyBytes,
+				ContentLength: int64(len(editedBodyBytes)),
+				Headers:       cloneHeaders(editedResp.Header),
 			}
-			r = edited_resp
+			r = editedResp
 		}
 	}
 
 	// add the response to the history
-	// TODO: For whatever reason, I have to use a full HttpItem insteam of a Resp
-	c.model.Custom.EditItem(http_item, ctx.Session)
+	// TODO: For whatever reason, I have to use a full HTTPItem insteam of a Resp
+	c.model.Custom.EditItem(httpItem, ctx.Session)
 
 	return r
 }
@@ -310,9 +310,9 @@ func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 		// Restore the io.ReadCloser to its original state
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
-	http_item := model.NewHttpItem(nil)
+	httpItem := model.NewHTTPItem(nil)
 	c.id = c.id + 1
-	http_item.ID = c.id
+	httpItem.ID = c.id
 
 	re := regexp.MustCompile(`\.(\w*)($|\?|\#)`)
 	matches := re.FindStringSubmatch(r.URL.Path)
@@ -325,8 +325,8 @@ func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 		params = true
 	}
 	// this is the original request, save it for the history
-	http_item.Req = &model.Request{
-		Url:           r.URL,
+	httpItem.Req = &model.Request{
+		URL:           r.URL,
 		Method:        r.Method,
 		Body:          bodyBytes,
 		Host:          r.Host,
@@ -340,12 +340,12 @@ func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 	// activate interceptor
 	if c.Sess.Config.Interceptor && c.Sess.Config.ReqIntercept {
 
-		edited_req, edited_resp := c.interceptorRequestActions(r, nil, ctx)
+		editedReq, editedResp := c.interceptorRequestActions(r, nil, ctx)
 
-		if edited_req != nil {
-			var edited_bodyBytes []byte
-			edited_bodyBytes, _ = ioutil.ReadAll(edited_req.Body)
-			edited_req.Body = ioutil.NopCloser(bytes.NewBuffer(edited_bodyBytes))
+		if editedReq != nil {
+			var editedBodyBytes []byte
+			editedBodyBytes, _ = ioutil.ReadAll(editedReq.Body)
+			editedReq.Body = ioutil.NopCloser(bytes.NewBuffer(editedBodyBytes))
 
 			re := regexp.MustCompile(`\.(\w*)($|\?|\#)`)
 			matches := re.FindStringSubmatch(r.URL.Path)
@@ -354,25 +354,25 @@ func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 				ext = matches[1]
 			}
 
-			http_item.EditedReq = &model.Request{
-				Url:           edited_req.URL,
-				Method:        edited_req.Method,
-				Body:          edited_bodyBytes,
-				Host:          edited_req.Host,
-				ContentLength: edited_req.ContentLength,
-				Headers:       cloneHeaders(edited_req.Header),
-				Proto:         edited_req.Proto,
+			httpItem.EditedReq = &model.Request{
+				URL:           editedReq.URL,
+				Method:        editedReq.Method,
+				Body:          editedBodyBytes,
+				Host:          editedReq.Host,
+				ContentLength: editedReq.ContentLength,
+				Headers:       cloneHeaders(editedReq.Header),
+				Proto:         editedReq.Proto,
 				Extension:     ext,
 			}
-			r = edited_req
-			resp = edited_resp
+			r = editedReq
+			resp = editedResp
 
 		}
 
 	}
 
 	// add the request to the history
-	c.model.Custom.AddItem(http_item, ctx.Session)
+	c.model.Custom.AddItem(httpItem, ctx.Session)
 
 	return r, resp
 }

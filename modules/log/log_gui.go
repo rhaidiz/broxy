@@ -8,6 +8,7 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
+// LogGui represents the Gui of the log module
 type LogGui struct {
 	core.GuiModule
 
@@ -16,6 +17,7 @@ type LogGui struct {
 	logTableView *widgets.QTableView
 }
 
+// NewLogGui returns a Gui of the main log module
 func NewLogGui(s *core.Session) *LogGui {
 	return &LogGui{
 		Sess:         s,
@@ -24,6 +26,7 @@ func NewLogGui(s *core.Session) *LogGui {
 	}
 }
 
+// SetTableModel sets the table model along with some column width to use in the history table
 func (g *LogGui) SetTableModel(m *model.SortFilterModel) {
 	g.logTableView.SetModel(m)
 	g.logTableView.SetColumnWidth(model.Type, 50)
@@ -32,6 +35,7 @@ func (g *LogGui) SetTableModel(m *model.SortFilterModel) {
 	g.logTableView.SetColumnWidth(model.Message, 200)
 }
 
+// GetModuleGui returns the Gui for the current module
 func (g *LogGui) GetModuleGui() widgets.QWidget_ITF {
 
 	widget := widgets.NewQWidget(nil, 0)
@@ -55,6 +59,7 @@ func (g *LogGui) GetModuleGui() widgets.QWidget_ITF {
 	return widget
 }
 
-func (m *LogGui) Name() string {
+// Title returns the time of this Gui
+func (g *LogGui) Title() string {
 	return "Log"
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
+// RepeaterGui represents the Gui of the repeater module
 type RepeaterGui struct {
 	core.GuiModule
 	Sess *core.Session
@@ -21,6 +22,7 @@ type RepeaterGui struct {
 	_       func(i int) `signal:"changedTab"`
 }
 
+// RepeaterTab represents a tab in the repeater module
 type RepeaterTab struct {
 	goBtn          *widgets.QPushButton
 	cancelBtn      *widgets.QPushButton
@@ -29,10 +31,12 @@ type RepeaterTab struct {
 	ResponseEditor *widgets.QPlainTextEdit
 }
 
+// NewRepeaterGui creates a new Gui for the repeater module
 func NewRepeaterGui(s *core.Session) *RepeaterGui {
 	return &RepeaterGui{Sess: s, tabNum: 1, tabRemoved: false}
 }
 
+// GetModuleGui returns the Gui for the current module
 func (g *RepeaterGui) GetModuleGui() widgets.QWidget_ITF {
 
 	g.repeaterTabs = widgets.NewQTabWidget(nil)
@@ -65,12 +69,14 @@ func (g *RepeaterGui) changedTab(i int) {
 	g.tabRemoved = false
 }
 
+// AddNewTab adds a new repeater tab
 func (g *RepeaterGui) AddNewTab(host string, request string) {
 	g.tabNum = g.tabNum + 1
 	g.repeaterTabs.InsertTab(g.repeaterTabs.Count()-1, g.NewTab(host, request), host)
 	g.repeaterTabs.SetCurrentIndex(g.repeaterTabs.Count() - 2)
 }
 
+// NewTab adds a new tab
 func (g *RepeaterGui) NewTab(host string, request string) widgets.QWidget_ITF {
 	t := &RepeaterTab{}
 	g.tabs = append(g.tabs, t)
@@ -108,11 +114,13 @@ func (g *RepeaterGui) NewTab(host string, request string) widgets.QWidget_ITF {
 	return mainWidget
 }
 
+// NewEmptyTab adds a new empty tab
 func (g *RepeaterGui) NewEmptyTab() widgets.QWidget_ITF {
 	return g.NewTab("", "")
 
 }
 
-func (g *RepeaterGui) Name() string {
+// Title returns the time of this Gui
+func (g *RepeaterGui) Title() string {
 	return "Repeater"
 }

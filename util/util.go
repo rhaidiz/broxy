@@ -11,6 +11,7 @@ import (
 	"strings"
 )
 
+// RequestsEquals returns if two requests are equal
 func RequestsEquals(r1 *http.Request, r2 *http.Request) bool {
 	if r1 == nil || r2 == nil {
 		return false
@@ -26,6 +27,7 @@ func RequestsEquals(r1 *http.Request, r2 *http.Request) bool {
 
 }
 
+// ResponsesEquals returns if two responses are equal
 func ResponsesEquals(r1 *http.Response, r2 *http.Response) bool {
 	if r1 == nil || r2 == nil {
 		return false
@@ -56,27 +58,29 @@ func bodyEquals(r1 *io.ReadCloser, r2 *io.ReadCloser) bool {
 	return body1 == body2
 }
 
-func NormalizeRequest(raw_req string) string {
+// NormalizeRequest adds missing headers to a request
+func NormalizeRequest(rawReq string) string {
 	a := regexp.MustCompile(`\n\n`)
-	s := a.Split(raw_req, 2)
+	s := a.Split(rawReq, 2)
 	if len(s) == 2 {
-		c_l := len(s[1])
-		if c_l == 0 {
-			return raw_req
+		cL := len(s[1])
+		if cL == 0 {
+			return rawReq
 		}
 		h := strings.Split(s[0], "\n")
-		new_header := ""
+		newHeader := ""
 		for _, v := range h {
 			if !strings.HasPrefix(v, "Content-Length") {
-				new_header = new_header + v + "\n"
+				newHeader = newHeader + v + "\n"
 			}
 		}
-		new_req_raw := fmt.Sprintf("%s%s%d\n\n%s", new_header, "Content-Length: ", c_l, s[1])
-		return new_req_raw
+		newReqRaw := fmt.Sprintf("%s%s%d\n\n%s", newHeader, "Content-Length: ", cL, s[1])
+		return newReqRaw
 	}
-	return raw_req
+	return rawReq
 }
 
+// RequestToString returns a string representation of a given HTTP request
 func RequestToString(r *http.Request) string {
 	if r == nil {
 		return ""
@@ -97,7 +101,8 @@ func RequestToString(r *http.Request) string {
 	return ret
 }
 
-func ResponseToString(r *http.Response, body_bytes bool) string {
+// ResponseToString returns a string representation of a given HTTP response
+func ResponseToString(r *http.Response, responseBodyBytes bool) string {
 	if r == nil {
 		return ""
 	}
@@ -113,7 +118,7 @@ func ResponseToString(r *http.Response, body_bytes bool) string {
 	bodyBytes, _ := ioutil.ReadAll(r.Body)
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 
-	if len(bodyBytes) > 0 && !body_bytes {
+	if len(bodyBytes) > 0 && !responseBodyBytes {
 		ret = ret + fmt.Sprintf("\n%s", string(bodyBytes))
 	} else {
 		ret = ret + fmt.Sprintf("\n%x", bodyBytes)

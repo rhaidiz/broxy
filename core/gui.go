@@ -5,8 +5,7 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
-// this will load the main GUI which is made of tabs
-
+// Broxygui is the main GUI made of tabs
 type Broxygui struct {
 	widgets.QMainWindow
 	_ func() `constructor:"setup"`
@@ -25,10 +24,12 @@ func (g *Broxygui) setup() {
 	g.SetCentralWidget(g.tabWidget)
 }
 
+//AddGuiModule adds a new module to the main GUI
 func (g *Broxygui) AddGuiModule(m GuiModule) {
-	g.tabWidget.AddTab(m.GetModuleGui(), m.Name())
+	g.tabWidget.AddTab(m.GetModuleGui(), m.Title())
 }
 
+//ShowErrorMessage shows a critical message box
 func (g *Broxygui) ShowErrorMessage(message string) {
 	widgets.QMessageBox_Critical(nil, "OK", message, widgets.QMessageBox__Ok, widgets.QMessageBox__Ok)
 }

@@ -1,7 +1,9 @@
 package coreproxy
 
+// Settings represents the settings for the core intercept proxy
+// TODO: fix it because you also have core.Config
 type Settings struct {
-	Ip            string
+	IP            string
 	Port          int
 	ReqIntercept  bool
 	RespIntercept bool

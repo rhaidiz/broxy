@@ -6,6 +6,7 @@ import (
 	"github.com/therecipe/qt/core"
 )
 
+// SortFilterModel represent a sorted filter model to perform sorting and filtering of the history table
 type SortFilterModel struct {
 	core.QSortFilterProxyModel
 
@@ -29,11 +30,13 @@ func (m *SortFilterModel) init() {
 	m.ConnectSortTableView(m.sortTableView)
 }
 
+// SetFilter sets a filter on the model
 func (m *SortFilterModel) SetFilter(f *Filter) {
 	m.filter = f
 	m.InvalidateFilter()
 }
 
+// ResetFilters remove all filters on the model
 func (m *SortFilterModel) ResetFilters() {
 	m.InvalidateFilter()
 }
@@ -42,11 +45,11 @@ func (m *SortFilterModel) filterAcceptsRow(sourceRow int, sourceParent *core.QMo
 	if m.filter == nil {
 		return true
 	}
-	req, edited_req, resp, edited_resp := m.Custom.GetReqResp(sourceRow)
+	req, editedReq, resp, editedResp := m.Custom.GetReqResp(sourceRow)
 
 	// extension
-	if (len(m.filter.Hide_ext) > 0 && m.filter.Hide_ext[req.Extension] == true) ||
-		(len(m.filter.Show_ext) > 0 && m.filter.Show_ext[req.Extension] == false) {
+	if (len(m.filter.HideExt) > 0 && m.filter.HideExt[req.Extension] == true) ||
+		(len(m.filter.ShowExt) > 0 && m.filter.ShowExt[req.Extension] == false) {
 		return false
 	}
 
@@ -67,14 +70,14 @@ func (m *SortFilterModel) filterAcceptsRow(sourceRow int, sourceParent *core.QMo
 	if req != nil {
 		txt = req.ToString()
 	}
-	if edited_req != nil {
-		txt = txt + edited_req.ToString()
+	if editedReq != nil {
+		txt = txt + editedReq.ToString()
 	}
 	if resp != nil {
 		txt = txt + resp.ToString()
 	}
-	if edited_resp != nil {
-		txt = txt + edited_resp.ToString()
+	if editedResp != nil {
+		txt = txt + editedResp.ToString()
 	}
 
 	if !strings.Contains(txt, m.filter.Search) {

@@ -12,6 +12,7 @@ import (
 	"github.com/rhaidiz/broxy/util"
 )
 
+// RepeaterController represents the controller of the repeater module
 type RepeaterController struct {
 	core.ControllerModule
 	Module *Repeater
@@ -19,6 +20,7 @@ type RepeaterController struct {
 	Sess   *core.Session
 }
 
+// NewRepeaterController creates a new controller for the repeater module
 func NewRepeaterController(module *Repeater, gui *RepeaterGui, s *core.Session) *RepeaterController {
 	c := &RepeaterController{
 		Module: module,
@@ -29,32 +31,32 @@ func NewRepeaterController(module *Repeater, gui *RepeaterGui, s *core.Session) 
 	return c
 }
 
+// GetGui returns the Gui of the current controller
 func (c *RepeaterController) GetGui() core.GuiModule {
 	return c.Gui
 }
 
+// GetModule returns the module of the current controller
 func (c *RepeaterController) GetModule() core.Module {
 	return c.Module
 }
 
-func (c *RepeaterController) Name() string {
-	return "repeater"
-}
-
+// ExecCommand execs commands submitted by other modules
 func (c *RepeaterController) ExecCommand(m string, args ...interface{}) {
 	if m == "send-to" {
 		r := args[0].(*model.Request)
 		print(r.Host)
-		c.Gui.AddNewTab(fmt.Sprintf("%s://%s", r.Url.Scheme, r.Host), fmt.Sprintf("%s\n", r.ToString()))
+		c.Gui.AddNewTab(fmt.Sprintf("%s://%s", r.URL.Scheme, r.Host), fmt.Sprintf("%s\n", r.ToString()))
 	}
 }
 
+// GoClick is the event fired when clicking the Go button in a repeater tab
 func (c *RepeaterController) GoClick(t *RepeaterTab) {
 	c.Sess.Debug(c.Module.Name(), "Go pressed")
-	r_raw := util.NormalizeRequest(t.RequestEditor.ToPlainText())
-	t.RequestEditor.SetPlainText(r_raw)
+	rRaw := util.NormalizeRequest(t.RequestEditor.ToPlainText())
+	t.RequestEditor.SetPlainText(rRaw)
 
-	r := strings.NewReader(r_raw)
+	r := strings.NewReader(rRaw)
 	buf := bufio.NewReader(r)
 
 	req, err := http.ReadRequest(buf)
@@ -62,9 +64,8 @@ func (c *RepeaterController) GoClick(t *RepeaterTab) {
 	if err != nil {
 		c.Sess.Err(c.Module.Name(), fmt.Sprintf("ReadRequest %v", err))
 		return
-	} else {
-		c.Sess.Debug(c.Module.Name(), req.Host)
 	}
+	c.Sess.Debug(c.Module.Name(), req.Host)
 
 	url, err := url.Parse(t.HostLine.Text())
 	req.URL.Scheme = url.Scheme

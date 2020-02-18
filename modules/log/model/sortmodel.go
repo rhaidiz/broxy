@@ -4,6 +4,7 @@ import (
 	"github.com/therecipe/qt/core"
 )
 
+// SortFilterModel represent a sorted filter model to perform sorting and filtering of the log table
 type SortFilterModel struct {
 	core.QSortFilterProxyModel
 

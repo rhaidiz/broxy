@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"encoding/hex"
 	"fmt"
-	"github.com/elazarl/goproxy"
-	"github.com/rhaidiz/broxy/util"
 	"io"
 	"net/http"
 	"regexp"
 	"strings"
+
+	"github.com/elazarl/goproxy"
+	"github.com/rhaidiz/broxy/util"
 )
 
 func (c *CoreproxyController) interceptorToggle(b bool) {
@@ -17,10 +18,10 @@ func (c *CoreproxyController) interceptorToggle(b bool) {
 		c.Sess.Config.Interceptor = true
 	} else {
 		c.Sess.Config.Interceptor = false
-		if c.requests_queue > 0 || c.responses_queue > 0 {
-			tmp := c.requests_queue + c.responses_queue
+		if c.requestsQueue > 0 || c.responsesQueue > 0 {
+			tmp := c.requestsQueue + c.responsesQueue
 			for i := 0; i < tmp; i++ {
-				c.forward_chan <- true
+				c.forwardChan <- true
 			}
 		}
 	}
@@ -30,8 +31,8 @@ func (c *CoreproxyController) interceptorToggle(b bool) {
 func (c *CoreproxyController) forward(b bool) {
 	go func() {
 		// activate only if there's something waiting
-		if c.requests_queue > 0 || c.responses_queue > 0 {
-			c.forward_chan <- true
+		if c.requestsQueue > 0 || c.responsesQueue > 0 {
+			c.forwardChan <- true
 		}
 	}()
 }
@@ -39,8 +40,8 @@ func (c *CoreproxyController) forward(b bool) {
 func (c *CoreproxyController) drop(b bool) {
 	go func() {
 		// activate only if there's something waiting
-		if c.requests_queue > 0 || c.responses_queue > 0 {
-			c.drop_chan <- true
+		if c.requestsQueue > 0 || c.responsesQueue > 0 {
+			c.dropChan <- true
 		}
 	}()
 }
@@ -48,9 +49,9 @@ func (c *CoreproxyController) drop(b bool) {
 func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp *http.Response) *http.Response {
 
 	var _resp *http.Response
-	body_hex := false
+	bodyHex := false
 	// increase the requests in queue
-	c.responses_queue = c.responses_queue + 1
+	c.responsesQueue = c.responsesQueue + 1
 	mutex.Lock()
 	// if response is bigger than 100mb, show message that is too big
 	// if the response has come sort of encoding, show the body as hex
@@ -58,19 +59,19 @@ func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp
 	if resp.ContentLength >= 1e+8 {
 		c.Gui.InterceptorTextEdit.SetPlainText("Response too big")
 	} else {
-		_, content_type_ok := resp.Header["Content-Type"]
-		_, content_encoding_ok := resp.Header["Content-Encoding"]
-		if (content_type_ok && strings.HasPrefix(resp.Header["Content-Type"][0], "image")) || content_encoding_ok {
+		_, contentTypeOK := resp.Header["Content-Type"]
+		_, contentEncodingOK := resp.Header["Content-Encoding"]
+		if (contentTypeOK && strings.HasPrefix(resp.Header["Content-Type"][0], "image")) || contentEncodingOK {
 			c.Gui.InterceptorTextEdit.SetPlainText(util.ResponseToString(resp, true))
-			body_hex = true
+			bodyHex = true
 		} else {
 			c.Gui.InterceptorTextEdit.SetPlainText(util.ResponseToString(resp, false))
 		}
 	}
 	for {
-		parse_error := false
+		parseError := false
 		select {
-		case <-c.forward_chan:
+		case <-c.forwardChan:
 			if !c.Sess.Config.Interceptor {
 				_resp = resp
 				break
@@ -87,16 +88,16 @@ func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp
 			var re = regexp.MustCompile(`(Content-Length: *\d+)\n?`)
 			s := re.ReplaceAllString(c.Gui.InterceptorTextEdit.ToPlainText(), "")
 
-			if body_hex {
+			if bodyHex {
 				a := regexp.MustCompile(`\n\n`)
 				s1 := a.Split(s, 2)
 				if len(s1) == 2 {
 					br, err := hex.DecodeString(s1[1])
 					if err != nil {
 						c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Resp: %s", err.Error()))
-						parse_error = true
+						parseError = true
 					} else {
-						body_hex = false
+						bodyHex = false
 						s = fmt.Sprintf("%s\n%s", s1[0], string(br))
 					}
 				}
@@ -117,7 +118,7 @@ func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp
 					_resp = tmp
 					if err != nil {
 						c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Resp: %s", err.Error()))
-						parse_error = true
+						parseError = true
 					}
 				}
 
@@ -128,18 +129,18 @@ func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp
 					}
 				}
 			}
-		case <-c.drop_chan:
+		case <-c.dropChan:
 			// pressed drop
 			_resp = goproxy.NewResponse(req,
 				goproxy.ContentTypeText, http.StatusForbidden, "Request droppped")
 		}
-		if !parse_error {
+		if !parseError {
 			break
 		}
 	}
 
 	// decrease the requests in queue
-	c.responses_queue = c.responses_queue - 1
+	c.responsesQueue = c.responsesQueue - 1
 	// rest the editor
 	c.Gui.InterceptorTextEdit.SetPlainText("")
 	mutex.Unlock()
@@ -163,16 +164,16 @@ func (c *CoreproxyController) interceptorRequestActions(req *http.Request, resp 
 	var _req *http.Request
 	var _resp *http.Response
 
-	c.requests_queue = c.requests_queue + 1
+	c.requestsQueue = c.requestsQueue + 1
 	mutex.Lock()
 	delete(req.Header, "Connection")
 	c.Gui.InterceptorTextEdit.SetPlainText(util.RequestToString(req) + "\n")
 
 	for {
-		parse_error := false
+		parseError := false
 		select {
 		// pressed forward
-		case <-c.forward_chan:
+		case <-c.forwardChan:
 			if !c.Sess.Config.Interceptor {
 				_req = req
 				_resp = nil
@@ -192,7 +193,7 @@ func (c *CoreproxyController) interceptorRequestActions(req *http.Request, resp 
 				r, err = http.ReadRequest(buf)
 				if err != nil {
 					c.Sess.Err(c.Module.Name(), fmt.Sprintf("Forward Req: %s", err.Error()))
-					parse_error = true
+					parseError = true
 				}
 			}
 			if err == nil {
@@ -208,18 +209,18 @@ func (c *CoreproxyController) interceptorRequestActions(req *http.Request, resp 
 				}
 			}
 		// pressed drop
-		case <-c.drop_chan:
+		case <-c.dropChan:
 			c.dropped[ctx.Session] = true
 			_req = req
 			_resp = goproxy.NewResponse(req,
 				goproxy.ContentTypeText, http.StatusForbidden, "Request droppped")
 		}
-		if !parse_error {
+		if !parseError {
 			break
 		}
 	}
 	// decrease the requests in queue
-	c.requests_queue = c.requests_queue - 1
+	c.requestsQueue = c.requestsQueue - 1
 	// rest the editor
 	c.Gui.InterceptorTextEdit.SetPlainText("")
 	mutex.Unlock()

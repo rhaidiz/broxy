@@ -1,8 +1,9 @@
 package model
 
+// Filter represents the filter of the history table
 type Filter struct {
 	Search     string
 	StatusCode []int
-	Show_ext   map[string]bool
-	Hide_ext   map[string]bool
+	ShowExt    map[string]bool
+	HideExt    map[string]bool
 }

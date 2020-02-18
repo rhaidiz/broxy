@@ -1,17 +1,19 @@
 package core
 
 import (
-	"github.com/therecipe/qt/widgets"
 	"time"
+
+	"github.com/therecipe/qt/widgets"
 )
 
+// Session represents a running session in Broxy with a GUI and loaded modules
 type Session struct {
 
 	// represent the session on FS
 	Path string
 
 	// List of modules
-	Modules []ControllerModule
+	Controllers []ControllerModule
 
 	// Logs
 	Logs []Log
@@ -24,6 +26,7 @@ type Session struct {
 	QApp *widgets.QApplication
 }
 
+// NewSession creates a new session
 func NewSession(path string, qa *widgets.QApplication) *Session {
 	return &Session{
 		Path:    path,
@@ -40,25 +43,29 @@ func NewSession(path string, qa *widgets.QApplication) *Session {
 	}
 }
 
+// LoadSession loads a session from a path
+// TODO: implement me
 func LoadSession(path string) *Session {
 	// Load session from file
 	return nil
 }
 
+// LoadModule loads a module in the current session
 func (s *Session) LoadModule(c ControllerModule) {
-	s.Modules = append(s.Modules, c)
+	s.Controllers = append(s.Controllers, c)
 	s.MainGui.AddGuiModule(c.GetGui())
 }
 
-func (s *Session) Exec(m string, f string, a ...interface{}) {
-	print(m)
-	for _, mod := range s.Modules {
-		if m == mod.Name() {
-			mod.ExecCommand(f, a...)
+// Exec executes, for a given module m, a function f with parameters a
+func (s *Session) Exec(c string, f string, a ...interface{}) {
+	for _, ctrl := range s.Controllers {
+		if c == ctrl.GetModule().Name() {
+			ctrl.ExecCommand(f, a...)
 		}
 	}
 }
 
+// Info logs an information message in the current session
 func (s *Session) Info(mod string, message string) {
 	t := time.Now()
 	l := Log{Type: "I", ModuleName: mod, Time: t.Format("2006-01-02 15:04:05"), Message: message}
@@ -66,6 +73,7 @@ func (s *Session) Info(mod string, message string) {
 	go func() { s.LogC <- l }()
 }
 
+// Debug logs a debug information messasge in the current session
 func (s *Session) Debug(mod string, message string) {
 	t := time.Now()
 	l := Log{Type: "D", ModuleName: mod, Time: t.Format("2006-01-02 15:04:05"), Message: message}
@@ -73,6 +81,7 @@ func (s *Session) Debug(mod string, message string) {
 	go func() { s.LogC <- l }()
 }
 
+// Err logs an error information message in the current session
 func (s *Session) Err(mod string, message string) {
 	t := time.Now()
 	l := Log{Type: "E", ModuleName: mod, Time: t.Format("2006-01-02 15:04:05"), Message: message}
