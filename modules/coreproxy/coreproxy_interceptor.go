@@ -13,7 +13,7 @@ import (
 	"github.com/rhaidiz/broxy/util"
 )
 
-func (c *CoreproxyController) interceptorToggle(b bool) {
+func (c *Controller) interceptorToggle(b bool) {
 	if !c.Sess.Config.Interceptor {
 		c.Sess.Config.Interceptor = true
 	} else {
@@ -28,7 +28,7 @@ func (c *CoreproxyController) interceptorToggle(b bool) {
 	c.Sess.Debug(c.Module.Name(), fmt.Sprintf("Interceptor is: %v", c.Sess.Config.Interceptor))
 }
 
-func (c *CoreproxyController) forward(b bool) {
+func (c *Controller) forward(b bool) {
 	go func() {
 		// activate only if there's something waiting
 		if c.requestsQueue > 0 || c.responsesQueue > 0 {
@@ -37,7 +37,7 @@ func (c *CoreproxyController) forward(b bool) {
 	}()
 }
 
-func (c *CoreproxyController) drop(b bool) {
+func (c *Controller) drop(b bool) {
 	go func() {
 		// activate only if there's something waiting
 		if c.requestsQueue > 0 || c.responsesQueue > 0 {
@@ -46,7 +46,7 @@ func (c *CoreproxyController) drop(b bool) {
 	}()
 }
 
-func (c *CoreproxyController) interceptorResponseActions(req *http.Request, resp *http.Response) *http.Response {
+func (c *Controller) interceptorResponseActions(req *http.Request, resp *http.Response) *http.Response {
 
 	var _resp *http.Response
 	bodyHex := false
@@ -158,7 +158,7 @@ func cloneHeaders(src http.Header) http.Header {
 	return dst
 }
 
-func (c *CoreproxyController) interceptorRequestActions(req *http.Request, resp *http.Response, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+func (c *Controller) interceptorRequestActions(req *http.Request, resp *http.Response, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 
 	// the request to return
 	var _req *http.Request

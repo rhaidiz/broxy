@@ -17,11 +17,11 @@ import (
 	"github.com/therecipe/qt/gui"
 )
 
-// CoreproxyController represents the controller for the main intercetp proxy
-type CoreproxyController struct {
+// Controller represents the controller for the main intercetp proxy
+type Controller struct {
 	core.ControllerModule
 	Module *Coreproxy
-	Gui    *CoreproxyGui
+	Gui    *Gui
 	Sess   *core.Session
 	filter *model.Filter
 
@@ -41,9 +41,9 @@ type CoreproxyController struct {
 
 var mutex = &sync.Mutex{}
 
-// NewCoreproxyController creates a new controller for the core intercetp proxy
-func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Session) *CoreproxyController {
-	c := &CoreproxyController{
+// NewController creates a new controller for the core intercetp proxy
+func NewController(proxy *Coreproxy, proxygui *Gui, s *core.Session) *Controller {
+	c := &Controller{
 		Module:         proxy,
 		Gui:            proxygui,
 		Sess:           s,
@@ -80,21 +80,21 @@ func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Se
 }
 
 // GetGui returns the Gui of the current controller
-func (c *CoreproxyController) GetGui() core.GuiModule {
+func (c *Controller) GetGui() core.GuiModule {
 	return c.Gui
 }
 
 // GetModule returns the module of the current controller
-func (c *CoreproxyController) GetModule() core.Module {
+func (c *Controller) GetModule() core.Module {
 	return c.Module
 }
 
 // ExecCommand execs commands submitted by other modules
-func (c *CoreproxyController) ExecCommand(m string, args ...interface{}) {
+func (c *Controller) ExecCommand(m string, args ...interface{}) {
 
 }
 
-func (c *CoreproxyController) initUIContent() {
+func (c *Controller) initUIContent() {
 	c.setDefaultFilter()
 	c.Gui.ListenerLineEdit.SetText(fmt.Sprintf("%s:%d", c.Sess.Config.Address, c.Sess.Config.Port))
 	if c.Sess.Config.Interceptor {
@@ -108,7 +108,7 @@ func (c *CoreproxyController) initUIContent() {
 	}
 }
 
-func (c *CoreproxyController) rightItemClicked(s string, r int) {
+func (c *Controller) rightItemClicked(s string, r int) {
 	clipboard := c.Sess.QApp.Clipboard()
 	actualRow := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
 	req, _, _, _ := c.model.Custom.GetReqResp(actualRow - 1)
@@ -125,20 +125,20 @@ func (c *CoreproxyController) rightItemClicked(s string, r int) {
 	}
 }
 
-func (c *CoreproxyController) downloadCAClicked(b bool) {
+func (c *Controller) downloadCAClicked(b bool) {
 	c.Gui.FileSaveAs(string(caCert))
 }
 
-func (c *CoreproxyController) checkReqInterception(b bool) {
+func (c *Controller) checkReqInterception(b bool) {
 	c.Sess.Config.ReqIntercept = c.Gui.ReqInterceptCheckBox.IsChecked()
 }
 
-func (c *CoreproxyController) checkRespInterception(b bool) {
+func (c *Controller) checkRespInterception(b bool) {
 	c.Sess.Config.RespIntercept = c.Gui.RespInterceptCheckBox.IsChecked()
 }
 
 // Defaut history filters
-func (c *CoreproxyController) setDefaultFilter() {
+func (c *Controller) setDefaultFilter() {
 	c.Gui.TextSearchLineEdit.SetText("")
 	c.Gui.S100CheckBox.SetChecked(true)
 	c.Gui.S200CheckBox.SetChecked(true)
@@ -152,7 +152,7 @@ func (c *CoreproxyController) setDefaultFilter() {
 	c.applyFilter(true)
 }
 
-func (c *CoreproxyController) applyFilter(b bool) {
+func (c *Controller) applyFilter(b bool) {
 	c.filter.Search = c.Gui.TextSearchLineEdit.DisplayText()
 	var status []int
 	if c.Gui.S100CheckBox.IsChecked() {
@@ -188,11 +188,11 @@ func (c *CoreproxyController) applyFilter(b bool) {
 	c.model.SetFilter(c.filter)
 }
 
-func (c *CoreproxyController) resetFilter(b bool) {
+func (c *Controller) resetFilter(b bool) {
 	c.setDefaultFilter()
 }
 
-func (c *CoreproxyController) selectRow(r int) {
+func (c *Controller) selectRow(r int) {
 	c.Gui.HideAllTabs()
 	actualRow := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
 	req, editedReq, resp, editedResp := c.model.Custom.GetReqResp(actualRow - 1)
@@ -210,7 +210,7 @@ func (c *CoreproxyController) selectRow(r int) {
 	}
 }
 
-func (c *CoreproxyController) startProxy(b bool) {
+func (c *Controller) startProxy(b bool) {
 
 	if !c.isRunning {
 		// Start and stop the proxy
@@ -252,7 +252,7 @@ func (c *CoreproxyController) startProxy(b bool) {
 }
 
 // Executed when a response arrives
-func (c *CoreproxyController) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
+func (c *Controller) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 
 	httpItem := model.NewHTTPItem(nil)
 
@@ -302,7 +302,7 @@ func (c *CoreproxyController) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 }
 
 // Executed when a request arrives
-func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+func (c *Controller) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
 	var resp *http.Response
 	var bodyBytes []byte
 	if r != nil {
@@ -377,11 +377,11 @@ func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 	return r, resp
 }
 
-func (c *CoreproxyController) ignoreHTTPSToggle(b bool) {
+func (c *Controller) ignoreHTTPSToggle(b bool) {
 	c.ignoreHTTPS = !c.ignoreHTTPS
 }
 
-func (c *CoreproxyController) broxyConnectHandle(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
+func (c *Controller) broxyConnectHandle(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
 	if c.ignoreHTTPS {
 		return goproxy.OkConnect, host
 	}

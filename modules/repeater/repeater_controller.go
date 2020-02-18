@@ -12,17 +12,17 @@ import (
 	"github.com/rhaidiz/broxy/util"
 )
 
-// RepeaterController represents the controller of the repeater module
-type RepeaterController struct {
+// Controller represents the controller of the repeater module
+type Controller struct {
 	core.ControllerModule
 	Module *Repeater
-	Gui    *RepeaterGui
+	Gui    *Gui
 	Sess   *core.Session
 }
 
-// NewRepeaterController creates a new controller for the repeater module
-func NewRepeaterController(module *Repeater, gui *RepeaterGui, s *core.Session) *RepeaterController {
-	c := &RepeaterController{
+// NewController creates a new controller for the repeater module
+func NewController(module *Repeater, gui *Gui, s *core.Session) *Controller {
+	c := &Controller{
 		Module: module,
 		Gui:    gui,
 		Sess:   s,
@@ -32,17 +32,17 @@ func NewRepeaterController(module *Repeater, gui *RepeaterGui, s *core.Session) 
 }
 
 // GetGui returns the Gui of the current controller
-func (c *RepeaterController) GetGui() core.GuiModule {
+func (c *Controller) GetGui() core.GuiModule {
 	return c.Gui
 }
 
 // GetModule returns the module of the current controller
-func (c *RepeaterController) GetModule() core.Module {
+func (c *Controller) GetModule() core.Module {
 	return c.Module
 }
 
 // ExecCommand execs commands submitted by other modules
-func (c *RepeaterController) ExecCommand(m string, args ...interface{}) {
+func (c *Controller) ExecCommand(m string, args ...interface{}) {
 	if m == "send-to" {
 		r := args[0].(*model.Request)
 		print(r.Host)
@@ -51,7 +51,7 @@ func (c *RepeaterController) ExecCommand(m string, args ...interface{}) {
 }
 
 // GoClick is the event fired when clicking the Go button in a repeater tab
-func (c *RepeaterController) GoClick(t *RepeaterTab) {
+func (c *Controller) GoClick(t *Tab) {
 	c.Sess.Debug(c.Module.Name(), "Go pressed")
 	rRaw := util.NormalizeRequest(t.RequestEditor.ToPlainText())
 	t.RequestEditor.SetPlainText(rRaw)

@@ -5,9 +5,9 @@ import (
 )
 
 // LoadLogModule loads the log module in the given session
-func LoadLogModule(s *core.Session) *LogController {
+func LoadLogModule(s *core.Session) *Controller {
 	m := NewLog(s)
-	g := NewLogGui(s)
-	c := NewLogController(m, g, s)
+	g := NewGui(s)
+	c := NewController(m, g, s)
 	return c
 }

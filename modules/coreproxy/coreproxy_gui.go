@@ -20,8 +20,8 @@ const (
 	ClearHistoryLabel = "Clear History"
 )
 
-// CoreproxyGui represents the GUI of the main intercept proxy
-type CoreproxyGui struct {
+// Gui represents the GUI of the main intercept proxy
+type Gui struct {
 	core.GuiModule
 
 	Sess *core.Session
@@ -89,9 +89,9 @@ type CoreproxyGui struct {
 	Drop                    func(bool)
 }
 
-// NewCoreproxyGui creates a new Gui for the main intercetp proxy
-func NewCoreproxyGui(s *core.Session) *CoreproxyGui {
-	return &CoreproxyGui{
+// NewGui creates a new Gui for the main intercetp proxy
+func NewGui(s *core.Session) *Gui {
+	return &Gui{
 		Sess:             s,
 		historyTableView: widgets.NewQTableView(nil),
 		view:             quick.NewQQuickView(nil),
@@ -99,7 +99,7 @@ func NewCoreproxyGui(s *core.Session) *CoreproxyGui {
 	}
 }
 
-func (g *CoreproxyGui) interceptorTabGui() widgets.QWidget_ITF {
+func (g *Gui) interceptorTabGui() widgets.QWidget_ITF {
 	widget := widgets.NewQWidget(nil, 0)
 	vlayout := widgets.NewQVBoxLayout()
 	widget.SetLayout(vlayout)
@@ -132,7 +132,7 @@ func (g *CoreproxyGui) interceptorTabGui() widgets.QWidget_ITF {
 
 }
 
-func (g *CoreproxyGui) filtersTabGui() widgets.QWidget_ITF {
+func (g *Gui) filtersTabGui() widgets.QWidget_ITF {
 	scrollArea := widgets.NewQScrollArea(nil)
 	scrollArea.SetWidgetResizable(true)
 	scrollArea.SetGeometry2(10, 10, 200, 200)
@@ -248,7 +248,7 @@ func (g *CoreproxyGui) filtersTabGui() widgets.QWidget_ITF {
 	return scrollArea
 }
 
-func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
+func (g *Gui) settingsTabGui() widgets.QWidget_ITF {
 	scrollArea := widgets.NewQScrollArea(nil)
 	scrollArea.SetWidgetResizable(true)
 	scrollArea.SetGeometry2(10, 10, 200, 200)
@@ -330,11 +330,11 @@ func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
 }
 
 // SetRightClickMenu sets the menu items when right clicking an item in the history table
-func (g *CoreproxyGui) SetRightClickMenu() {
+func (g *Gui) SetRightClickMenu() {
 }
 
 // SetTableModel sets the table model along with some column width to use in the history table
-func (g *CoreproxyGui) SetTableModel(m *model.SortFilterModel) {
+func (g *Gui) SetTableModel(m *model.SortFilterModel) {
 	g.historyTableView.SetModel(m)
 	g.historyTableView.SetColumnWidth(model.ID, 40)
 	g.historyTableView.SetColumnWidth(model.Host, 200)
@@ -349,38 +349,38 @@ func (g *CoreproxyGui) SetTableModel(m *model.SortFilterModel) {
 }
 
 // HideAllTabs hides the tabs used to view details of a single row in the history table
-func (g *CoreproxyGui) HideAllTabs() {
+func (g *Gui) HideAllTabs() {
 	for i := g.reqRespTab.Count(); i != 0; i-- {
 		g.reqRespTab.RemoveTab(i)
 	}
 }
 
 // ShowReqTab shows the request tab for the currently selected item in the history table
-func (g *CoreproxyGui) ShowReqTab(req string) {
+func (g *Gui) ShowReqTab(req string) {
 	g.reqRespTab.AddTab(g.RequestTextEdit, "Request")
 	g.RequestTextEdit.SetPlainText(req)
 }
 
 // ShowEditedReqTab shows the edited request tab for the currently selected item in the history table
-func (g *CoreproxyGui) ShowEditedReqTab(editedReq string) {
+func (g *Gui) ShowEditedReqTab(editedReq string) {
 	g.reqRespTab.AddTab(g.EditedRequestTextEdit, "Edited Request")
 	g.EditedRequestTextEdit.SetPlainText(editedReq)
 
 }
 
 // ShowRespTab shows the response tab for the currently selected item in the history table
-func (g *CoreproxyGui) ShowRespTab(resp string) {
+func (g *Gui) ShowRespTab(resp string) {
 	g.reqRespTab.AddTab(g.ResponseTextEdit, "Response")
 	g.ResponseTextEdit.SetPlainText(resp)
 }
 
 // ShowEditedRespTab shows the edited response tab for the currently selected item in the history table
-func (g *CoreproxyGui) ShowEditedRespTab(editedResp string) {
+func (g *Gui) ShowEditedRespTab(editedResp string) {
 	g.reqRespTab.AddTab(g.EditedResponseTextEdit, "Edited Response")
 	g.EditedResponseTextEdit.SetPlainText(editedResp)
 }
 
-func (g *CoreproxyGui) customContextMenuRequested(p *qtcore.QPoint) {
+func (g *Gui) customContextMenuRequested(p *qtcore.QPoint) {
 	if g.contextMenu == nil {
 		g.contextMenu = widgets.NewQMenu(nil)
 		copyURLAction := g.contextMenu.AddAction(CopyURLLabel)
@@ -417,7 +417,7 @@ func (g *CoreproxyGui) customContextMenuRequested(p *qtcore.QPoint) {
 }
 
 // GetModuleGui returns the Gui for the current module
-func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
+func (g *Gui) GetModuleGui() widgets.QWidget_ITF {
 	g.coreProxyGui = widgets.NewQTabWidget(nil)
 	g.coreProxyGui.SetDocumentMode(true)
 
@@ -490,7 +490,7 @@ func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
 }
 
 // FileSaveAs saves the CA file
-func (g *CoreproxyGui) FileSaveAs(s string) bool {
+func (g *Gui) FileSaveAs(s string) bool {
 	var fileDialog = widgets.NewQFileDialog2(nil, "Save as...", "broxyca.pem", "PEM (*.pem)")
 	fileDialog.SetAcceptMode(widgets.QFileDialog__AcceptSave)
 	var mimeTypes = []string{"application/x-pem-file"}
@@ -513,7 +513,7 @@ func (g *CoreproxyGui) FileSaveAs(s string) bool {
 	return true
 }
 
-func (g *CoreproxyGui) bench(b bool) {
+func (g *Gui) bench(b bool) {
 	fmt.Println("start here")
 
 	s := time.Now()
@@ -537,6 +537,6 @@ func (g *CoreproxyGui) bench(b bool) {
 }
 
 // Title returns the time of this Gui
-func (g *CoreproxyGui) Title() string {
+func (g *Gui) Title() string {
 	return "Proxy"
 }
