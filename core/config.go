@@ -1,10 +1,12 @@
 package core
 
-// Config represents the configuration of the main intercept proxy
+// Config represents the global configuration
 type Config struct {
 	Address       string
 	Port          int
 	Interceptor   bool
 	ReqIntercept  bool
 	RespIntercept bool
+	CACertificate []byte
+	CAPrivateKey  []byte
 }
