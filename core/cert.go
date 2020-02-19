@@ -1,3 +1,5 @@
+// thanks to evilsocket's amazing code from bettercap
+
 package core
 
 import (
@@ -6,13 +8,20 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"fmt"
 	"math/big"
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/elazarl/goproxy"
+)
+
+var (
+	certCache = make(map[string]*tls.Certificate)
+	certLock  = &sync.Mutex{}
 )
 
 // CreateCA returns a Certificate Authority and its private key
@@ -69,9 +78,13 @@ func TLSConfigFromCA(ca *tls.Certificate) func(host string, ctx *goproxy.ProxyCt
 			}
 		}
 
-		cert, err := signHost(ca, hostname, port)
-		if err != nil {
-			return nil, err
+		cert := getCachedCert(hostname, port)
+		if cert == nil {
+			cert, err = signHost(ca, hostname, port)
+			if err != nil {
+				return nil, err
+			}
+			setCachedCert(hostname, port, cert)
 		}
 
 		config := tls.Config{
@@ -110,11 +123,11 @@ func signHost(ca *tls.Certificate, host string, port int) (cert *tls.Certificate
 			OrganizationalUnit: []string{"https://github.com/rhaidiz/broxy/"},
 			CommonName:         "broxy mitm certificate",
 		},
-		NotBefore:             notBefore,
-		NotAfter:              notAfter,
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: true,
+		NotBefore: notBefore,
+		NotAfter:  notAfter,
+		//KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		//ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		//BasicConstraintsValid: true,
 	}
 
 	if ip := net.ParseIP(host); ip != nil {
@@ -137,4 +150,23 @@ func signHost(ca *tls.Certificate, host string, port int) (cert *tls.Certificate
 		Certificate: [][]byte{derBytes, ca.Certificate[0]},
 		PrivateKey:  certpriv,
 	}, nil
+}
+
+func keyFor(domain string, port int) string {
+	return fmt.Sprintf("%s:%d", domain, port)
+}
+
+func getCachedCert(domain string, port int) *tls.Certificate {
+	certLock.Lock()
+	defer certLock.Unlock()
+	if cert, found := certCache[keyFor(domain, port)]; found {
+		return cert
+	}
+	return nil
+}
+
+func setCachedCert(domain string, port int, cert *tls.Certificate) {
+	certLock.Lock()
+	defer certLock.Unlock()
+	certCache[keyFor(domain, port)] = cert
 }
