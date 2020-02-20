@@ -35,8 +35,8 @@ type Coreproxy struct {
 func NewCoreProxy(s *core.Session) *Coreproxy {
 	setCa(s.Config.CACertificate, s.Config.CAPrivateKey)
 	p := &Coreproxy{
-		Address: s.Config.Address,
-		Port:    s.Config.Port,
+		Address: Stg.IP,
+		Port:    Stg.Port,
 		Proxyh:  goproxy.NewProxyHttpServer(),
 		Req:     0,
 		Resp:    0,

@@ -14,10 +14,10 @@ import (
 )
 
 func (c *Controller) interceptorToggle(b bool) {
-	if !c.Sess.Config.Interceptor {
-		c.Sess.Config.Interceptor = true
+	if !Stg.Interceptor {
+		Stg.Interceptor = true
 	} else {
-		c.Sess.Config.Interceptor = false
+		Stg.Interceptor = false
 		if c.requestsQueue > 0 || c.responsesQueue > 0 {
 			tmp := c.requestsQueue + c.responsesQueue
 			for i := 0; i < tmp; i++ {
@@ -25,7 +25,7 @@ func (c *Controller) interceptorToggle(b bool) {
 			}
 		}
 	}
-	c.Sess.Debug(c.Module.Name(), fmt.Sprintf("Interceptor is: %v", c.Sess.Config.Interceptor))
+	c.Sess.Debug(c.Module.Name(), fmt.Sprintf("Interceptor is: %v", Stg.Interceptor))
 }
 
 func (c *Controller) forward(b bool) {
@@ -72,7 +72,7 @@ func (c *Controller) interceptorResponseActions(req *http.Request, resp *http.Re
 		parseError := false
 		select {
 		case <-c.forwardChan:
-			if !c.Sess.Config.Interceptor {
+			if !Stg.Interceptor {
 				_resp = resp
 				break
 			}
@@ -174,7 +174,7 @@ func (c *Controller) interceptorRequestActions(req *http.Request, resp *http.Res
 		select {
 		// pressed forward
 		case <-c.forwardChan:
-			if !c.Sess.Config.Interceptor {
+			if !Stg.Interceptor {
 				_req = req
 				_resp = nil
 				break

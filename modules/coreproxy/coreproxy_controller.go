@@ -96,14 +96,14 @@ func (c *Controller) ExecCommand(m string, args ...interface{}) {
 
 func (c *Controller) initUIContent() {
 	c.setDefaultFilter()
-	c.Gui.ListenerLineEdit.SetText(fmt.Sprintf("%s:%d", c.Sess.Config.Address, c.Sess.Config.Port))
-	if c.Sess.Config.Interceptor {
+	c.Gui.ListenerLineEdit.SetText(fmt.Sprintf("%s:%d", Stg.IP, Stg.Port))
+	if Stg.Interceptor {
 		c.Gui.InterceptorToggleButton.SetChecked(true)
 	}
-	if c.Sess.Config.ReqIntercept {
+	if Stg.ReqIntercept {
 		c.Gui.ReqInterceptCheckBox.SetChecked(true)
 	}
-	if c.Sess.Config.RespIntercept {
+	if Stg.RespIntercept {
 		c.Gui.RespInterceptCheckBox.SetChecked(true)
 	}
 }
@@ -126,15 +126,15 @@ func (c *Controller) rightItemClicked(s string, r int) {
 }
 
 func (c *Controller) downloadCAClicked(b bool) {
-	c.Gui.FileSaveAs(string(caCert))
+	c.Gui.FileSaveAs(string(c.Sess.Config.CACertificate))
 }
 
 func (c *Controller) checkReqInterception(b bool) {
-	c.Sess.Config.ReqIntercept = c.Gui.ReqInterceptCheckBox.IsChecked()
+	Stg.ReqIntercept = c.Gui.ReqInterceptCheckBox.IsChecked()
 }
 
 func (c *Controller) checkRespInterception(b bool) {
-	c.Sess.Config.RespIntercept = c.Gui.RespInterceptCheckBox.IsChecked()
+	Stg.RespIntercept = c.Gui.RespInterceptCheckBox.IsChecked()
 }
 
 // Defaut history filters
@@ -222,8 +222,8 @@ func (c *Controller) startProxy(b bool) {
 			p, _ := strconv.Atoi(s[2])
 			if e := c.Module.ChangeIPPort(s[1], p); e == nil {
 				// if I can change ip and port, change it also in the config struct
-				c.Sess.Config.Address = s[1]
-				c.Sess.Config.Port = p
+				Stg.IP = s[1]
+				Stg.Port = p
 				go func() {
 					c.Gui.StartStopButton.SetText("Stop")
 					c.isRunning = true
@@ -241,7 +241,7 @@ func (c *Controller) startProxy(b bool) {
 			c.Sess.Err(c.Module.Name(), "Wrong input")
 		}
 	} else {
-		if c.Sess.Config.Interceptor {
+		if Stg.Interceptor {
 			c.interceptorToggle(false)
 		}
 		c.Module.Stop()
@@ -272,7 +272,7 @@ func (c *Controller) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Respo
 	}
 	// activate interceptor
 	_, dropped := c.dropped[ctx.Session]
-	if c.Sess.Config.Interceptor && c.Sess.Config.RespIntercept && !dropped {
+	if Stg.Interceptor && Stg.RespIntercept && !dropped {
 		// if the response is nil, it means the interceptor did not change the response
 
 		r.ContentLength = int64(len(bodyBytes))
@@ -338,7 +338,7 @@ func (c *Controller) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Reques
 	}
 
 	// activate interceptor
-	if c.Sess.Config.Interceptor && c.Sess.Config.ReqIntercept {
+	if Stg.Interceptor && Stg.ReqIntercept {
 
 		editedReq, editedResp := c.interceptorRequestActions(r, nil, ctx)
 

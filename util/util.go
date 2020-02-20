@@ -6,8 +6,11 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os/user"
+	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"strings"
 )
 
@@ -124,4 +127,27 @@ func ResponseToString(r *http.Response, responseBodyBytes bool) string {
 		ret = ret + fmt.Sprintf("\n%x", bodyBytes)
 	}
 	return ret
+}
+
+func GetSettingsDir() string {
+
+	usr, err := user.Current()
+	if err != nil {
+		return "./"
+	}
+
+	if runtime.GOOS == "linux" {
+		return filepath.Join(usr.HomeDir, ".config/broxy/")
+	}
+
+	if runtime.GOOS == "darwin" {
+		return filepath.Join(usr.HomeDir, ".config/broxy/")
+	}
+
+	if runtime.GOOS == "windows" {
+		return filepath.Join(usr.HomeDir, ".\\broxy\\")
+	}
+
+	return "./"
+
 }
