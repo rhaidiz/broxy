@@ -35,9 +35,9 @@ type Session struct {
 }
 
 // NewSession creates a new session
-func NewSession(path string, qa *widgets.QApplication) *Session {
+func NewSession(path string, qa *widgets.QApplication, cfg *Config) *Session {
 
-	cfg := loadGlobalSettings(path)
+	//cfg := loadGlobalSettings(path)
 
 	return &Session{
 		Path:    path,
@@ -48,7 +48,8 @@ func NewSession(path string, qa *widgets.QApplication) *Session {
 	}
 }
 
-func loadGlobalSettings(path string) *Config {
+// LoadGlobalSettings loads the global settings
+func LoadGlobalSettings(path string) *Config {
 
 	// if path doesn't exists, create it
 	if _, err := os.Stat(path); os.IsNotExist(err) {

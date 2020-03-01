@@ -13,7 +13,8 @@ func main() {
 
 	qa := widgets.NewQApplication(len(os.Args), os.Args)
 
-	s := core.NewSession(util.GetSettingsDir(), qa)
+	config := core.LoadGlobalSettings(util.GetSettingsDir())
+	s := core.NewSession("", qa, config)
 	//Load All modules
 	modules.LoadModules(s)
 
