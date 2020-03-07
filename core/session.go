@@ -78,6 +78,8 @@ func LoadGlobalSettings(path string) *Config {
 		saveGlobalSettings(cfg, xmlSettingsPath)
 	}
 
+	// TODO: add a method that checks the configuration just loaded
+
 	return cfg
 
 }
