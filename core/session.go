@@ -17,8 +17,8 @@ var globalSettingsFileName = "global_settings.xml"
 // Session represents a running session in Broxy with a GUI and loaded modules
 type Session struct {
 
-	// represent the session on FS
-	Path string
+	// represents the title and path of the project
+	Prj *Project
 
 	// List of modules
 	Controllers []ControllerModule
@@ -35,12 +35,13 @@ type Session struct {
 }
 
 // NewSession creates a new session
-func NewSession(path string, qa *widgets.QApplication, cfg *Config) *Session {
+func NewSession(prj *Project, qa *widgets.QApplication, cfg *Config) *Session {
 
-	//cfg := loadGlobalSettings(path)
 
+	println(prj.Title)
+	println(prj.Path)
 	return &Session{
-		Path:    path,
+		Prj:    prj,
 		MainGui: NewBroxygui(nil, 0),
 		Config:  cfg,
 		LogC:    make(chan Log),

@@ -1,6 +1,7 @@
 package util
 
 import (
+	"os"
 	"bytes"
 	"fmt"
 	"io"
@@ -150,4 +151,19 @@ func GetSettingsDir() string {
 
 	return "./"
 
+}
+
+func GetTmpDir() string {
+	if runtime.GOOS == "linux" {
+		return filepath.Join("/tmp")
+	}
+
+	if runtime.GOOS == "darwin" {
+		return filepath.Join("/tmp")
+	}
+
+	if runtime.GOOS == "windows" {
+		return filepath.Join(os.Getenv("TEMP"))
+	}
+	return "./"
 }
