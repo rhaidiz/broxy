@@ -37,9 +37,6 @@ type Session struct {
 // NewSession creates a new session
 func NewSession(prj *Project, qa *widgets.QApplication, cfg *Config) *Session {
 
-
-	println(prj.Title)
-	println(prj.Path)
 	return &Session{
 		Prj:    prj,
 		MainGui: NewBroxygui(nil, 0),
