@@ -13,9 +13,9 @@ import (
 func main() {
 
 	qa := widgets.NewQApplication(len(os.Args), os.Args)
-	cfg := core.LoadGlobalSettings(util.GetSettingsDir())
+	cfg, history := core.LoadGlobalSettings(util.GetSettingsDir())
 	prj := coregui.NewProjectgui(nil, 0)
-	prj.InitWith(cfg, qa)
+	prj.InitWith(history, cfg, qa)
 
 	prj.Show()
 

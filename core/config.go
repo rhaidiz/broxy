@@ -4,7 +4,11 @@ package core
 type Config struct {
 	CACertificate   []byte    `xml:"CACert"`
 	CAPrivateKey    []byte    `xml:"CAPvt"`
-	ProjectsHistory []*Project `xml:"ProjectsHistory"`
+	Project					*Project
+}
+
+type History struct {
+	H []*Project `xml:"ProjectsHistory"`
 }
 
 type Project struct {

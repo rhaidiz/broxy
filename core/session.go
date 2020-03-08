@@ -17,8 +17,6 @@ var globalSettingsFileName = "global_settings.xml"
 // Session represents a running session in Broxy with a GUI and loaded modules
 type Session struct {
 
-	// represents the title and path of the project
-	Prj *Project
 
 	// List of modules
 	Controllers []ControllerModule
@@ -35,10 +33,9 @@ type Session struct {
 }
 
 // NewSession creates a new session
-func NewSession(prj *Project, qa *widgets.QApplication, cfg *Config) *Session {
+func NewSession(qa *widgets.QApplication, cfg *Config) *Session {
 
 	return &Session{
-		Prj:    prj,
 		MainGui: NewBroxygui(nil, 0),
 		Config:  cfg,
 		LogC:    make(chan Log),
@@ -47,7 +44,7 @@ func NewSession(prj *Project, qa *widgets.QApplication, cfg *Config) *Session {
 }
 
 // LoadGlobalSettings loads the global settings
-func LoadGlobalSettings(path string) *Config {
+func LoadGlobalSettings(path string) (*Config, *History) {
 
 	// if path doesn't exists, create it
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -55,6 +52,7 @@ func LoadGlobalSettings(path string) *Config {
 	}
 
 	var cfg *Config
+	var history *History
 	xmlSettingsPath := filepath.Join(path, globalSettingsFileName)
 	xmlSettingsFile, err := os.Open(xmlSettingsPath)
 	defer xmlSettingsFile.Close()
@@ -62,7 +60,7 @@ func LoadGlobalSettings(path string) *Config {
 		// create the file and put in a new fresh default settings
 		cfg = initGlobalSettings()
 		saveGlobalSettings(cfg, xmlSettingsPath)
-		return cfg
+		return cfg, history
 	}
 
 	byteValue, err := ioutil.ReadAll(xmlSettingsFile)
@@ -71,14 +69,15 @@ func LoadGlobalSettings(path string) *Config {
 	}
 
 	err = xml.Unmarshal(byteValue, &cfg)
-	if err != nil {
+	err1 := xml.Unmarshal(byteValue, &history)
+	if err != nil && err1 != nil {
 		cfg = initGlobalSettings()
 		saveGlobalSettings(cfg, xmlSettingsPath)
 	}
 
 	// TODO: add a method that checks the configuration just loaded
 
-	return cfg
+	return cfg, history
 
 }
 
