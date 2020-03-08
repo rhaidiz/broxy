@@ -13,6 +13,7 @@ import (
 )
 
 var globalSettingsFileName = "global_settings.xml"
+var historyFileName = "history.xml"
 
 // Session represents a running session in Broxy with a GUI and loaded modules
 type Session struct {
@@ -44,7 +45,7 @@ func NewSession(qa *widgets.QApplication, cfg *Config) *Session {
 }
 
 // LoadGlobalSettings loads the global settings
-func LoadGlobalSettings(path string) (*Config, *History) {
+func LoadGlobalSettings(path string) *Config {
 
 	// if path doesn't exists, create it
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -52,7 +53,6 @@ func LoadGlobalSettings(path string) (*Config, *History) {
 	}
 
 	var cfg *Config
-	var history *History
 	xmlSettingsPath := filepath.Join(path, globalSettingsFileName)
 	xmlSettingsFile, err := os.Open(xmlSettingsPath)
 	defer xmlSettingsFile.Close()
@@ -60,7 +60,7 @@ func LoadGlobalSettings(path string) (*Config, *History) {
 		// create the file and put in a new fresh default settings
 		cfg = initGlobalSettings()
 		saveGlobalSettings(cfg, xmlSettingsPath)
-		return cfg, history
+		return cfg
 	}
 
 	byteValue, err := ioutil.ReadAll(xmlSettingsFile)
@@ -69,16 +69,37 @@ func LoadGlobalSettings(path string) (*Config, *History) {
 	}
 
 	err = xml.Unmarshal(byteValue, &cfg)
-	err1 := xml.Unmarshal(byteValue, &history)
-	if err != nil && err1 != nil {
+	if err != nil {
 		cfg = initGlobalSettings()
 		saveGlobalSettings(cfg, xmlSettingsPath)
 	}
 
 	// TODO: add a method that checks the configuration just loaded
 
-	return cfg, history
+	return cfg
 
+}
+
+// LoadHistory loads the projects history
+func LoadHistory(path string) *History {
+
+	historyPath := filepath.Join(path, historyFileName)
+	historyFile, err := os.Open(historyPath)
+	defer historyFile.Close()
+	if err != nil {
+		// no history
+		return &History{}
+	}
+	byteValue, err := ioutil.ReadAll(historyFile)
+	if err != nil {
+		fmt.Println(err)
+	}
+	var history *History
+	err = xml.Unmarshal(byteValue, &history)
+	if err != nil {
+		return &History{}
+	}
+	return history
 }
 
 func initGlobalSettings() *Config {
