@@ -16,6 +16,7 @@ type Module interface {
 // GuiModule interface
 type GuiModule interface {
 	GetModuleGui() widgets.QWidget_ITF
+	GetSettings() widgets.QWidget_ITF
 	Title() string
 }
 

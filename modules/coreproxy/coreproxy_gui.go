@@ -39,6 +39,7 @@ type Gui struct {
 	SaveCAClicked         func(bool)
 	RightItemClicked      func(string, int)
 	settingsTab           *widgets.QTabWidget
+	settingsWidget				widgets.QWidget_ITF
 
 	// history tab
 	historyTableView       *widgets.QTableView
@@ -248,7 +249,12 @@ func (g *Gui) filtersTabGui() widgets.QWidget_ITF {
 	return scrollArea
 }
 
-func (g *Gui) settingsTabGui() widgets.QWidget_ITF {
+//func (g *Gui) settingsTabGui() widgets.QWidget_ITF {
+func (g *Gui) GetSettings() widgets.QWidget_ITF {
+	return g.settingsWidget
+}
+
+func (g *Gui) settingsGui() widgets.QWidget_ITF {
 	scrollArea := widgets.NewQScrollArea(nil)
 	scrollArea.SetWidgetResizable(true)
 	scrollArea.SetGeometry2(10, 10, 200, 200)
@@ -481,7 +487,8 @@ func (g *Gui) GetModuleGui() widgets.QWidget_ITF {
 
 	g.coreProxyGui.AddTab(g.interceptorTabGui(), "Interceptor")
 	g.coreProxyGui.AddTab(g.historyTab, "History")
-	g.coreProxyGui.AddTab(g.settingsTabGui(), "Settings")
+	g.settingsWidget = g.settingsGui()
+	//g.coreProxyGui.AddTab(g.settingsTabGui(), "Settings")
 
 	//IMP: make me pretier
 	g.ControllerInit()

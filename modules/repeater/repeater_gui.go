@@ -36,6 +36,10 @@ func NewGui(s *core.Session) *Gui {
 	return &Gui{Sess: s, tabNum: 1, tabRemoved: false}
 }
 
+func (g *Gui) GetSettings() widgets.QWidget_ITF {
+	return nil
+}
+
 // GetModuleGui returns the Gui for the current module
 func (g *Gui) GetModuleGui() widgets.QWidget_ITF {
 

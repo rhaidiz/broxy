@@ -26,6 +26,9 @@ func NewGui(s *core.Session) *Gui {
 	}
 }
 
+func (g *Gui) GetSettings() widgets.QWidget_ITF {
+	return nil
+}
 // SetTableModel sets the table model along with some column width to use in the history table
 func (g *Gui) SetTableModel(m *model.SortFilterModel) {
 	g.logTableView.SetModel(m)
