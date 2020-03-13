@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/therecipe/qt/core"
+	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
 )
 
@@ -13,10 +14,11 @@ type Broxygui struct {
 	tabWidget *widgets.QTabWidget
 	treeWidget *widgets.QTreeWidget
 
-	settingsMapping map[string]widgets.QWidget_ITF
-	modulesTreeItem *widgets.QTreeWidgetItem
-	current string
-	hLayout *widgets.QHBoxLayout
+	settingsMapping 			map[string]widgets.QWidget_ITF
+	modulesTreeItem 			*widgets.QTreeWidgetItem
+	current 					string
+	hLayout 					*widgets.QHBoxLayout
+	gzipDecodeCheckBox          *widgets.QCheckBox
 }
 
 func (g *Broxygui) setup() {
@@ -85,9 +87,27 @@ func (g *Broxygui) settingsTab() widgets.QWidget_ITF{
 
 func (g *Broxygui) globalSettings() widgets.QWidget_ITF {
 	widget := widgets.NewQWidget(nil, 0)
-	hLayout := widgets.NewQHBoxLayout()
+	hLayout := widgets.NewQVBoxLayout()
 	widget.SetLayout(hLayout)
-	hLayout.AddWidget(widgets.NewQPushButton2("Test", nil),0,0)
+
+	label := widgets.NewQLabel(nil, 0)
+	font := gui.NewQFont()
+	font.SetPointSize(20)
+	font.SetBold(true)
+	font.SetWeight(75)
+	label.SetFont(font)
+	label.SetObjectName("label")
+	label.SetText("Global Settings")
+
+	g.gzipDecodeCheckBox = widgets.NewQCheckBox(nil)
+	g.gzipDecodeCheckBox.SetText("Decode GZIP Responses")
+
+	spacerItem := widgets.NewQSpacerItem(20, 40, widgets.QSizePolicy__Minimum, widgets.QSizePolicy__Expanding)
+
+	hLayout.AddWidget(label, 0, core.Qt__AlignLeft)
+	hLayout.AddWidget(g.gzipDecodeCheckBox, 0, core.Qt__AlignLeft)
+	hLayout.AddItem(spacerItem)
+	
 	return widget
 }
 
