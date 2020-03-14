@@ -1,12 +1,6 @@
 package core
 
 import (
-	_ "encoding/pem"
-	_ "encoding/xml"
-	_ "fmt"
-	_ "io/ioutil"
-	_ "os"
-	_ "path/filepath"
 	"time"
 
 	"github.com/therecipe/qt/widgets"

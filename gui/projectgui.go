@@ -1,10 +1,10 @@
-package coregui
+package gui
 
 import (
 	"fmt"
 	bcore "github.com/rhaidiz/broxy/core"
-	"github.com/rhaidiz/broxy/util"
 	"github.com/rhaidiz/broxy/modules"
+	"github.com/rhaidiz/broxy/util"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 )
 
+// Projectgui shows a project history and allows to create a new project or load an existing one
 type Projectgui struct {
 	widgets.QMainWindow
 	_ func() `constructor:"setup"`
@@ -21,21 +22,21 @@ type Projectgui struct {
 	newProjectButton  *widgets.QPushButton
 	loadProjectButton *widgets.QPushButton
 	openProjectButton *widgets.QPushButton
-	QApp              *widgets.QApplication
+	qApp              *widgets.QApplication
 	Config            *bcore.Config
-	history 					*bcore.History
+	history 		  *bcore.History
+
 }
 
 func (g *Projectgui) setup() {
 
-
 }
 
-
+// InitWith initializes Projectgui with a given history, configuration and QApplication
 func (g *Projectgui) InitWith(history *bcore.History, cfg *bcore.Config, qApp *widgets.QApplication) {
-	g.Config = cfg
-	g.QApp = qApp
 	g.history = history
+	g.Config = cfg
+	g.qApp = qApp
 	g.init()
 }
 
@@ -52,7 +53,7 @@ func (g *Projectgui) init(){
 	g.SetCentralWidget(mainWidget)
 	g.projectsListWidget = widgets.NewQListWidget(nil)
 
-	delegate := InitDelegate(g.QApp)
+	delegate := InitDelegate(g.qApp)
 	g.projectsListWidget.SetItemDelegate(delegate)
 	g.projectsListWidget.ConnectItemDoubleClicked(g.itemDoubleClicked)
 	font := gui.NewQFont2("Monospace", 11, int(gui.QFont__Normal), false)
@@ -97,7 +98,7 @@ func (g *Projectgui) itemDoubleClicked(item *widgets.QListWidgetItem){
 	r := g.projectsListWidget.CurrentRow()
 	
 	g.Config.Project = g.history.H[r]
-	s := bcore.NewSession(g.QApp, g.Config)
+	s := bcore.NewSession(g.qApp, g.Config)
 	//Load All modules
 	modules.LoadModules(s)
 
@@ -110,7 +111,7 @@ func (g *Projectgui) newProject(b bool) {
 	p := filepath.Join(util.GetTmpDir(), fmt.Sprintf("%d",time.Now().UnixNano()))
 	prj := &bcore.Project{"New empty project",p}
 	g.Config.Project = prj
-	s := bcore.NewSession(g.QApp, g.Config)
+	s := bcore.NewSession(g.qApp, g.Config)
 	//Load All modules
 	modules.LoadModules(s)
 

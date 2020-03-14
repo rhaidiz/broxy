@@ -130,6 +130,7 @@ func ResponseToString(r *http.Response, responseBodyBytes bool) string {
 	return ret
 }
 
+// GetSettingsDir returns the path to the settings folder
 func GetSettingsDir() string {
 
 	usr, err := user.Current()
@@ -153,6 +154,7 @@ func GetSettingsDir() string {
 
 }
 
+// GetTmpDir returns the path to a temporary folder
 func GetTmpDir() string {
 	if runtime.GOOS == "linux" {
 		return filepath.Join("/tmp")
