@@ -35,6 +35,20 @@ func (g *Broxygui) setup() {
 
 	g.SetCentralWidget(g.tabWidget)
 	g.tabWidget.AddTab(g.settingsTab(), "Settings")
+	
+	g.createMenuBar()
+}
+
+func (g *Broxygui) createMenuBar(){
+	menuBar := g.MenuBar().AddMenu2("&File")
+
+	newAction := widgets.NewQAction2("New project", g)
+	saveAction := widgets.NewQAction2("Persist project", g)
+	openAction := widgets.NewQAction2("Open project...", g)
+	
+	menuBar.AddActions([]*widgets.QAction{})
+	menuBar.AddActions([]*widgets.QAction{newAction, saveAction,openAction})
+
 }
 
 func (g *Broxygui) InitWith(s *Session) {
