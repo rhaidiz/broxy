@@ -33,7 +33,7 @@ type Coreproxy struct {
 
 // NewCoreProxy creates a new intercept proxy
 func NewCoreProxy(s *core.Session) *Coreproxy {
-	setCa(s.Config.CACertificate, s.Config.CAPrivateKey)
+	setCa(s.Settings.CACertificate, s.Settings.CAPrivateKey)
 	p := &Coreproxy{
 		Address: Stg.IP,
 		Port:    Stg.Port,

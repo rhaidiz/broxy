@@ -2,9 +2,11 @@ package gui
 
 import (
 	"fmt"
+	_ "os"
 	bcore "github.com/rhaidiz/broxy/core"
 	"github.com/rhaidiz/broxy/modules"
 	"github.com/rhaidiz/broxy/util"
+	"github.com/rhaidiz/broxy/core/project"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
@@ -23,8 +25,10 @@ type Projectgui struct {
 	loadProjectButton *widgets.QPushButton
 	openProjectButton *widgets.QPushButton
 	qApp              *widgets.QApplication
-	Config            *bcore.Config
-	history 		  *bcore.History
+	config            *bcore.BroxySettings
+	history 		  *project.History
+	contextMenu       *widgets.QMenu
+
 
 }
 
@@ -33,14 +37,16 @@ func (g *Projectgui) setup() {
 }
 
 // InitWith initializes Projectgui with a given history, configuration and QApplication
-func (g *Projectgui) InitWith(history *bcore.History, cfg *bcore.Config, qApp *widgets.QApplication) {
-	g.history = history
-	g.Config = cfg
+func (g *Projectgui) InitWith(qApp *widgets.QApplication) {
 	g.qApp = qApp
 	g.init()
 }
 
 func (g *Projectgui) init(){
+
+	g.config = bcore.LoadGlobalSettings(util.GetSettingsDir())
+	g.history = project.LoadHistory(util.GetSettingsDir())
+
 	g.SetWindowTitle("Welcome to Broxy")
 	g.Resize(core.NewQSize2(488, 372))
 	g.SetMinimumSize(core.NewQSize2(488, 372))
@@ -56,6 +62,9 @@ func (g *Projectgui) init(){
 	delegate := InitDelegate(g.qApp)
 	g.projectsListWidget.SetItemDelegate(delegate)
 	g.projectsListWidget.ConnectItemDoubleClicked(g.itemDoubleClicked)
+	g.projectsListWidget.SetContextMenuPolicy(core.Qt__CustomContextMenu)
+	g.projectsListWidget.ConnectCustomContextMenuRequested(g.customContextMenuRequested)
+
 	font := gui.NewQFont2("Monospace", 11, int(gui.QFont__Normal), false)
 	fontMetrics := gui.NewQFontMetricsF(font)
 
@@ -94,11 +103,30 @@ func (g *Projectgui) init(){
 	vLayout.AddItem(spacerItem)
 }
 
+func (g *Projectgui) customContextMenuRequested(p *core.QPoint) {
+	if g.contextMenu == nil {
+		g.contextMenu = widgets.NewQMenu(nil)
+		remove := g.contextMenu.AddAction("Remove")
+		remove.ConnectTriggered(func(b bool) {
+			fmt.Println("right click")
+			r := g.projectsListWidget.CurrentRow()
+			g.history.Remove(g.history.H[r])
+			g.projectsListWidget.TakeItem(r)
+		})
+	}
+	g.contextMenu.Exec2(g.projectsListWidget.MapToGlobal(p), nil)
+}
+
 func (g *Projectgui) itemDoubleClicked(item *widgets.QListWidgetItem){
 	r := g.projectsListWidget.CurrentRow()
-	
-	g.Config.Project = g.history.H[r]
-	s := bcore.NewSession(g.qApp, g.Config)
+	path := g.history.H[r].Path
+	title := g.history.H[r].Title
+	c, err := project.OpenPersistentProject(title,path)
+	if err != nil {
+		g.showErrorMessage("Project does not exist")
+		return
+	}
+	s := bcore.NewSession(g.config, c)
 	//Load All modules
 	modules.LoadModules(s)
 
@@ -109,12 +137,20 @@ func (g *Projectgui) itemDoubleClicked(item *widgets.QListWidgetItem){
 func (g *Projectgui) newProject(b bool) {
 
 	p := filepath.Join(util.GetTmpDir(), fmt.Sprintf("%d",time.Now().UnixNano()))
-	prj := &bcore.Project{"New empty project",p}
-	g.Config.Project = prj
-	s := bcore.NewSession(g.qApp, g.Config)
+	fmt.Println(p)
+	c, _ := project.NewPersistentProject("NewProject",p)
+
+	// temporary, for now, everytime I create a new project I save it in the history
+	s := bcore.NewSession(g.config, c)
 	//Load All modules
 	modules.LoadModules(s)
 
+	g.history.Add(&project.Project{"NewProject",p})
 	s.MainGui.Show()
 	g.Close()
+}
+
+//ShowErrorMessage shows a critical message box
+func (g *Projectgui) showErrorMessage(message string) {
+	widgets.QMessageBox_Critical(nil, "OK", message, widgets.QMessageBox__Ok, widgets.QMessageBox__Ok)
 }

@@ -48,7 +48,7 @@ func (c *Controller) ExecCommand(m string, args ...interface{}) {
 }
 
 func (c *Controller) logEvent() {
-	for l := range c.Sess.LogC {
+	for l := range c.Sess.LogEvent {
 		c.modelSort.Custom.AddItem(l)
 	}
 }

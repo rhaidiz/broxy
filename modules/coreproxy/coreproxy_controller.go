@@ -14,7 +14,7 @@ import (
 	"github.com/rhaidiz/broxy/core"
 	"github.com/rhaidiz/broxy/modules/coreproxy/model"
 	qtcore "github.com/therecipe/qt/core"
-	"github.com/therecipe/qt/gui"
+	"github.com/atotto/clipboard"
 )
 
 // Controller represents the controller for the main intercetp proxy
@@ -109,16 +109,17 @@ func (c *Controller) initUIContent() {
 }
 
 func (c *Controller) rightItemClicked(s string, r int) {
-	clipboard := c.Sess.QApp.Clipboard()
+	//req.URL.Scheme
+	//clipboard := c.Sess.QApp.Clipboard()
 	actualRow := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
 	req, _, _, _ := c.model.Custom.GetReqResp(actualRow - 1)
 	if s == CopyURLLabel {
-		clipboard.SetText(fmt.Sprintf("%s://%s%s", req.URL.Scheme, req.Host, req.URL.Path), gui.QClipboard__Clipboard)
+		clipboard.WriteAll(fmt.Sprintf("%s://%s%s", req.URL.Scheme, req.Host, req.URL.Path))
 	} else if s == CopyBaseURLLabel {
-		clipboard.SetText(fmt.Sprintf("%s://%s", req.URL.Scheme, req.Host), gui.QClipboard__Clipboard)
+		clipboard.WriteAll(fmt.Sprintf("%s://%s", req.URL.Scheme, req.Host))
 	} else if s == RepeatLabel {
 		// FIXME: I **really** don't like this
-		c.Sess.Exec("repeater", "send-to", req)
+		c.Sess.Exec("Repeater", "send-to", req)
 	} else if s == ClearHistoryLabel {
 		c.model.Custom.ClearHistory()
 		c.id = 0
@@ -126,7 +127,7 @@ func (c *Controller) rightItemClicked(s string, r int) {
 }
 
 func (c *Controller) downloadCAClicked(b bool) {
-	c.Gui.FileSaveAs(string(c.Sess.Config.CACertificate))
+	c.Gui.FileSaveAs(string(c.Sess.Settings.CACertificate))
 }
 
 func (c *Controller) checkReqInterception(b bool) {

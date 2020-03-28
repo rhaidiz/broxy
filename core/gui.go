@@ -19,9 +19,12 @@ type Broxygui struct {
 	current 					string
 	hLayout 					*widgets.QHBoxLayout
 	gzipDecodeCheckBox          *widgets.QCheckBox
+
+	s *Session
 }
 
 func (g *Broxygui) setup() {
+	// loading global config
 
 	g.settingsMapping = make(map[string]widgets.QWidget_ITF)
 	g.SetWindowTitle("Broxy (1.0.0-alpha.2)")
@@ -32,6 +35,16 @@ func (g *Broxygui) setup() {
 
 	g.SetCentralWidget(g.tabWidget)
 	g.tabWidget.AddTab(g.settingsTab(), "Settings")
+}
+
+func (g *Broxygui) InitWith(s *Session) {
+	g.s = s
+	if s.GlobalSettings.GZipDecode {
+		g.gzipDecodeCheckBox.SetChecked(true)
+	}else{
+		g.gzipDecodeCheckBox.SetChecked(false)
+	}
+	
 }
 
 //AddGuiModule adds a new module to the main GUI
@@ -59,6 +72,7 @@ func (g *Broxygui) settingsTab() widgets.QWidget_ITF{
 
 	g.treeWidget = widgets.NewQTreeWidget(nil)
 	g.treeWidget.ConnectItemClicked(g.itemClicked)
+	g.treeWidget.SetHeaderHidden(true)
 	g.hLayout.AddWidget(g.treeWidget,0 ,0)
 
 	item := widgets.NewQTreeWidgetItem(0)
@@ -101,6 +115,7 @@ func (g *Broxygui) globalSettings() widgets.QWidget_ITF {
 
 	g.gzipDecodeCheckBox = widgets.NewQCheckBox(nil)
 	g.gzipDecodeCheckBox.SetText("Decode GZIP Responses")
+	g.gzipDecodeCheckBox.ConnectClicked(g.gzipDecodeCheckBoxClicked)
 
 	spacerItem := widgets.NewQSpacerItem(20, 40, widgets.QSizePolicy__Minimum, widgets.QSizePolicy__Expanding)
 
@@ -109,6 +124,11 @@ func (g *Broxygui) globalSettings() widgets.QWidget_ITF {
 	hLayout.AddItem(spacerItem)
 	
 	return widget
+}
+
+func ( g *Broxygui) gzipDecodeCheckBoxClicked(b bool){
+	g.s.GlobalSettings.GZipDecode = g.gzipDecodeCheckBox.IsChecked()
+	g.s.PersistentProject.SaveSettings("project",g.s.GlobalSettings)
 }
 
 func (g *Broxygui) emptySettings() widgets.QWidget_ITF {

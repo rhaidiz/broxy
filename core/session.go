@@ -2,38 +2,38 @@ package core
 
 import (
 	"time"
-
-	"github.com/therecipe/qt/widgets"
+	"github.com/rhaidiz/broxy/core/project"
 )
 
 
 // Session represents a running session in Broxy with a GUI and loaded modules
 type Session struct {
+	Controllers 		[]ControllerModule
+	
+	Logs 				[]Log
+	LogEvent			chan Log
 
+	MainGui 			*Broxygui
+	PersistentProject	*project.PersistentProject
 
-	// List of modules
-	Controllers []ControllerModule
-
-	// Logs
-	Logs []Log
-
-	MainGui *Broxygui
-	Config  *Config
-
-	LogC chan Log
-
-	QApp *widgets.QApplication
+	Settings  			*BroxySettings
+	GlobalSettings 		*GlobalSettings
 }
 
 // NewSession creates a new session
-func NewSession(qa *widgets.QApplication, cfg *Config) *Session {
-
-	return &Session{
-		MainGui: NewBroxygui(nil, 0),
-		Config:  cfg,
-		LogC:    make(chan Log),
-		QApp:    qa,
+func NewSession(cfg *BroxySettings, p *project.PersistentProject) *Session {
+	g := NewBroxygui(nil, 0)
+	gc := &GlobalSettings{}
+	p.LoadSettings("project",gc)
+	s := &Session{
+		MainGui: 			g,
+		Settings:  			cfg,
+		GlobalSettings: 	gc,
+		LogEvent:    		make(chan Log),
+		PersistentProject:	p,
 	}
+	g.InitWith(s)
+	return s
 }
 
 // LoadModule loads a module in the current session
@@ -45,6 +45,7 @@ func (s *Session) LoadModule(c ControllerModule) {
 // Exec executes, for a given module m, a function f with parameters a
 func (s *Session) Exec(c string, f string, a ...interface{}) {
 	for _, ctrl := range s.Controllers {
+		println(ctrl.GetModule().Name())
 		if c == ctrl.GetModule().Name() {
 			ctrl.ExecCommand(f, a...)
 		}
@@ -56,7 +57,7 @@ func (s *Session) Info(mod string, message string) {
 	t := time.Now()
 	l := Log{Type: "I", ModuleName: mod, Time: t.Format("2006-01-02 15:04:05"), Message: message}
 	s.Logs = append(s.Logs, l)
-	go func() { s.LogC <- l }()
+	go func() { s.LogEvent <- l }()
 }
 
 // Debug logs a debug information messasge in the current session
@@ -64,7 +65,7 @@ func (s *Session) Debug(mod string, message string) {
 	t := time.Now()
 	l := Log{Type: "D", ModuleName: mod, Time: t.Format("2006-01-02 15:04:05"), Message: message}
 	s.Logs = append(s.Logs, l)
-	go func() { s.LogC <- l }()
+	go func() { s.LogEvent <- l }()
 }
 
 // Err logs an error information message in the current session
@@ -72,5 +73,5 @@ func (s *Session) Err(mod string, message string) {
 	t := time.Now()
 	l := Log{Type: "E", ModuleName: mod, Time: t.Format("2006-01-02 15:04:05"), Message: message}
 	s.Logs = append(s.Logs, l)
-	go func() { s.LogC <- l }()
+	go func() { s.LogEvent <- l }()
 }
