@@ -26,7 +26,7 @@ func NewGui(s *core.Session) *Gui {
 	}
 }
 
-func (g *Gui) GetSettings() widgets.QWidget_ITF {
+func (g *Gui) GetSettings() interface{} {
 	return nil
 }
 // SetTableModel sets the table model along with some column width to use in the history table
@@ -39,7 +39,7 @@ func (g *Gui) SetTableModel(m *model.SortFilterModel) {
 }
 
 // GetModuleGui returns the Gui for the current module
-func (g *Gui) GetModuleGui() widgets.QWidget_ITF {
+func (g *Gui) GetModuleGui() interface{}  {
 
 	widget := widgets.NewQWidget(nil, 0)
 	widget.SetLayout(widgets.NewQVBoxLayout())

@@ -126,11 +126,12 @@ func (g *Projectgui) itemDoubleClicked(item *widgets.QListWidgetItem){
 		g.showErrorMessage("Project does not exist")
 		return
 	}
-	s := bcore.NewSession(g.config, c)
+	gui := NewBroxygui(nil,0)
+	s := bcore.NewSession(g.config, c, gui)
 	//Load All modules
 	modules.LoadModules(s)
 
-	s.MainGui.Show()
+	gui.Show()
 	g.Close()
 }
 
@@ -141,12 +142,13 @@ func (g *Projectgui) newProject(b bool) {
 	c, _ := project.NewPersistentProject("NewProject",p)
 
 	// temporary, for now, everytime I create a new project I save it in the history
-	s := bcore.NewSession(g.config, c)
+	gui := NewBroxygui(nil,0)
+	s := bcore.NewSession(g.config, c, gui)
 	//Load All modules
 	modules.LoadModules(s)
 
 	g.history.Add(&project.Project{"NewProject",p})
-	s.MainGui.Show()
+	gui.Show()
 	g.Close()
 }
 

@@ -250,7 +250,7 @@ func (g *Gui) filtersTabGui() widgets.QWidget_ITF {
 }
 
 //func (g *Gui) settingsTabGui() widgets.QWidget_ITF {
-func (g *Gui) GetSettings() widgets.QWidget_ITF {
+func (g *Gui) GetSettings() interface{} {
 	return g.settingsWidget
 }
 
@@ -423,7 +423,7 @@ func (g *Gui) customContextMenuRequested(p *qtcore.QPoint) {
 }
 
 // GetModuleGui returns the Gui for the current module
-func (g *Gui) GetModuleGui() widgets.QWidget_ITF {
+func (g *Gui) GetModuleGui() interface{} {
 	g.coreProxyGui = widgets.NewQTabWidget(nil)
 	g.coreProxyGui.SetDocumentMode(true)
 

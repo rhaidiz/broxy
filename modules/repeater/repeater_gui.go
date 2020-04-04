@@ -36,12 +36,12 @@ func NewGui(s *core.Session) *Gui {
 	return &Gui{Sess: s, tabNum: 1, tabRemoved: false}
 }
 
-func (g *Gui) GetSettings() widgets.QWidget_ITF {
+func (g *Gui) GetSettings() interface{} {
 	return nil
 }
 
 // GetModuleGui returns the Gui for the current module
-func (g *Gui) GetModuleGui() widgets.QWidget_ITF {
+func (g *Gui) GetModuleGui() interface{}  {
 
 	g.repeaterTabs = widgets.NewQTabWidget(nil)
 	g.repeaterTabs.SetDocumentMode(true)

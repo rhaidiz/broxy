@@ -1,14 +1,24 @@
-package core
+package gui
 
 import (
+	"time"
+	"path/filepath"
+	"fmt"
+
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
+	"github.com/rhaidiz/broxy/core/project"
+	bcore "github.com/rhaidiz/broxy/core"
+	"github.com/rhaidiz/broxy/modules"
+	"github.com/rhaidiz/broxy/util"
 )
 
 // Broxygui is the main GUI made of tabs
 type Broxygui struct {
 	widgets.QMainWindow
+	bcore.MainGui
+
 	_ func() `constructor:"setup"`
 
 	tabWidget *widgets.QTabWidget
@@ -20,7 +30,7 @@ type Broxygui struct {
 	hLayout 					*widgets.QHBoxLayout
 	gzipDecodeCheckBox          *widgets.QCheckBox
 
-	s *Session
+	s *bcore.Session
 }
 
 func (g *Broxygui) setup() {
@@ -49,9 +59,27 @@ func (g *Broxygui) createMenuBar(){
 	menuBar.AddActions([]*widgets.QAction{})
 	menuBar.AddActions([]*widgets.QAction{newAction, saveAction,openAction})
 
+	newAction.ConnectTriggered(g.newProjectAction)
+
 }
 
-func (g *Broxygui) InitWith(s *Session) {
+func (g *Broxygui) newProjectAction(b bool){
+	p := filepath.Join(util.GetTmpDir(), fmt.Sprintf("%d",time.Now().UnixNano()))
+	fmt.Println(p)
+	c, _ := project.NewPersistentProject("NewProject",p)
+
+	// temporary, for now, everytime I create a new project I save it in the history
+	gui := NewBroxygui(nil,0)
+	s := bcore.NewSession(g.s.Settings, c, gui)
+	//Load All modules
+	modules.LoadModules(s)
+
+	//g.history.Add(&project.Project{"NewProject",p})
+	gui.Show()
+	g.Close()
+}
+
+func (g *Broxygui) InitWith(s *bcore.Session) {
 	g.s = s
 	if s.GlobalSettings.GZipDecode {
 		g.gzipDecodeCheckBox.SetChecked(true)
@@ -62,11 +90,11 @@ func (g *Broxygui) InitWith(s *Session) {
 }
 
 //AddGuiModule adds a new module to the main GUI
-func (g *Broxygui) AddGuiModule(m GuiModule) {
+func (g *Broxygui) AddGuiModule(m bcore.GuiModule) {
 	g.tabWidget.SetCurrentIndex(0)
-	g.tabWidget.InsertTab(0,m.GetModuleGui(), m.Title())
+	g.tabWidget.InsertTab(0,m.GetModuleGui().(widgets.QWidget_ITF), m.Title())
 	if m.GetSettings() != nil {
-		g.settingsMapping[m.Title()] = m.GetSettings()
+		g.settingsMapping[m.Title()] = m.GetSettings().(widgets.QWidget_ITF)
 		item := widgets.NewQTreeWidgetItem(0)
 		item.SetText(0,m.Title())
 		g.modulesTreeItem.AddChild(item)

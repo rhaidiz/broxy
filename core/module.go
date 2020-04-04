@@ -1,9 +1,5 @@
 package core
 
-import (
-	"github.com/therecipe/qt/widgets"
-)
-
 // Module interface
 type Module interface {
 	Name() string
@@ -15,8 +11,8 @@ type Module interface {
 
 // GuiModule interface
 type GuiModule interface {
-	GetModuleGui() widgets.QWidget_ITF
-	GetSettings() widgets.QWidget_ITF
+	GetModuleGui() interface{}
+	GetSettings() interface{}
 	Title() string
 }
 

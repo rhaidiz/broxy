@@ -5,6 +5,10 @@ import (
 	"github.com/rhaidiz/broxy/core/project"
 )
 
+type MainGui interface {
+	AddGuiModule(GuiModule)
+	InitWith(*Session)
+}
 
 // Session represents a running session in Broxy with a GUI and loaded modules
 type Session struct {
@@ -13,7 +17,7 @@ type Session struct {
 	Logs 				[]Log
 	LogEvent			chan Log
 
-	MainGui 			*Broxygui
+	MainGui 			MainGui
 	PersistentProject	*project.PersistentProject
 
 	Settings  			*BroxySettings
@@ -21,18 +25,17 @@ type Session struct {
 }
 
 // NewSession creates a new session
-func NewSession(cfg *BroxySettings, p *project.PersistentProject) *Session {
-	g := NewBroxygui(nil, 0)
+func NewSession(cfg *BroxySettings, p *project.PersistentProject, gui MainGui) *Session {
 	gc := &GlobalSettings{}
 	p.LoadSettings("project",gc)
 	s := &Session{
-		MainGui: 			g,
+		MainGui: 			gui,
 		Settings:  			cfg,
 		GlobalSettings: 	gc,
 		LogEvent:    		make(chan Log),
 		PersistentProject:	p,
 	}
-	g.InitWith(s)
+	gui.InitWith(s)
 	return s
 }
 
