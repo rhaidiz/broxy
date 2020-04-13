@@ -26,7 +26,7 @@ type Projectgui struct {
 	openProjectButton *widgets.QPushButton
 	qApp              *widgets.QApplication
 	config            *bcore.BroxySettings
-	history 		  *project.History
+	history 		  *History
 	contextMenu       *widgets.QMenu
 
 
@@ -45,7 +45,7 @@ func (g *Projectgui) InitWith(qApp *widgets.QApplication) {
 func (g *Projectgui) init(){
 
 	g.config = bcore.LoadGlobalSettings(util.GetSettingsDir())
-	g.history = project.LoadHistory(util.GetSettingsDir())
+	g.history = LoadHistory(util.GetSettingsDir())
 
 	g.SetWindowTitle("Welcome to Broxy")
 	g.Resize(core.NewQSize2(488, 372))
@@ -93,6 +93,7 @@ func (g *Projectgui) init(){
 
 	//g.loadProjectButton = widgets.NewQPushButton2("Load Project", nil)
 	g.openProjectButton = widgets.NewQPushButton2("Open Existing Project", nil)
+	g.openProjectButton.ConnectClicked(g.openProject)
 
 	spacerItem := widgets.NewQSpacerItem(40, 20, widgets.QSizePolicy__Minimum, widgets.QSizePolicy__Expanding)
 
@@ -108,7 +109,6 @@ func (g *Projectgui) customContextMenuRequested(p *core.QPoint) {
 		g.contextMenu = widgets.NewQMenu(nil)
 		remove := g.contextMenu.AddAction("Remove")
 		remove.ConnectTriggered(func(b bool) {
-			fmt.Println("right click")
 			r := g.projectsListWidget.CurrentRow()
 			g.history.Remove(g.history.H[r])
 			g.projectsListWidget.TakeItem(r)
@@ -123,7 +123,7 @@ func (g *Projectgui) itemDoubleClicked(item *widgets.QListWidgetItem){
 	title := g.history.H[r].Title
 	c, err := project.OpenPersistentProject(title,path)
 	if err != nil {
-		g.showErrorMessage("Project does not exist")
+		g.showErrorMessage(fmt.Sprintf("Error while opening project: %s",err))
 		return
 	}
 	gui := NewBroxygui(nil,0)
@@ -139,7 +139,10 @@ func (g *Projectgui) newProject(b bool) {
 
 	p := filepath.Join(util.GetTmpDir(), fmt.Sprintf("%d",time.Now().UnixNano()))
 	fmt.Println(p)
-	c, _ := project.NewPersistentProject("NewProject",p)
+	c, err := project.NewPersistentProject("NewProject",p)
+	if err != nil {
+		g.showErrorMessage(fmt.Sprintf("Error while creating a new project: %s",err))
+	}
 
 	// temporary, for now, everytime I create a new project I save it in the history
 	gui := NewBroxygui(nil,0)
@@ -147,7 +150,29 @@ func (g *Projectgui) newProject(b bool) {
 	//Load All modules
 	modules.LoadModules(s)
 
-	g.history.Add(&project.Project{"NewProject",p})
+	gui.Show()
+	g.Close()
+}
+
+func (g *Projectgui) openProject(b bool) {
+	var fileDialog = widgets.NewQFileDialog2(g, "Open project", "", "")
+	fileDialog.SetFileMode(widgets.QFileDialog__DirectoryOnly);
+	fileDialog.SetOption(widgets.QFileDialog__ShowDirsOnly, false);
+	if fileDialog.Exec() != int(widgets.QDialog__Accepted) {
+		return
+	}
+	var fn = fileDialog.SelectedFiles()[0]
+	dir, file := filepath.Split(fn)
+	c, err := project.OpenPersistentProject(file,dir)
+	if err != nil{
+		g.showErrorMessage(fmt.Sprintf("Error while opening a new project: %s",err))
+		return
+	}
+	gui := NewBroxygui(nil,0)
+	s := bcore.NewSession(g.config, c, gui)
+	//Load All modules
+	modules.LoadModules(s)
+
 	gui.Show()
 	g.Close()
 }

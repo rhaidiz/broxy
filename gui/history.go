@@ -1,4 +1,4 @@
-package project
+package gui
 
 import (
 	"os"
@@ -6,18 +6,13 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"fmt"
+	"github.com/rhaidiz/broxy/core/project"
 )
 
 // History represents a history of projects
 type History struct {
-	H []*Project `json:"ProjectsHistory"`
+	H []*project.Project `json:"ProjectsHistory"`
 	path string
-}
-
-// Project represents the basic information of a project
-type Project struct {
-	Title string
-	Path  string
 }
 
 var historyFileName = "history.json"
@@ -47,7 +42,7 @@ func LoadHistory(path string) *History {
 }
 
 // SaveToHistory saves a new project to the history
-func (h *History) Add(p *Project) error {
+func (h *History) Add(p *project.Project) error {
 	h.H = append(h.H, p)
 
 	historyJson, _ := json.MarshalIndent(h, "", " ")
@@ -57,7 +52,7 @@ func (h *History) Add(p *Project) error {
 }
 
 // RemoveFromHistory removes an entry from the history
-func (h *History) Remove(p *Project) error{
+func (h *History) Remove(p *project.Project) error{
 	r := -1
 	for i,e := range h.H {
 		if e.Title == p.Title && e.Path == p.Path{

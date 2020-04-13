@@ -31,10 +31,13 @@ type Broxygui struct {
 	gzipDecodeCheckBox          *widgets.QCheckBox
 
 	s *bcore.Session
+
+	history 		  *History
 }
 
 func (g *Broxygui) setup() {
 	// loading global config
+	g.history = LoadHistory(util.GetSettingsDir())
 
 	g.settingsMapping = make(map[string]widgets.QWidget_ITF)
 	g.SetWindowTitle("Broxy (1.0.0-alpha.2)")
@@ -60,13 +63,64 @@ func (g *Broxygui) createMenuBar(){
 	menuBar.AddActions([]*widgets.QAction{newAction, saveAction,openAction})
 
 	newAction.ConnectTriggered(g.newProjectAction)
+	saveAction.ConnectTriggered(g.saveProjectAction)
+	openAction.ConnectTriggered(g.openProjectAction)
 
 }
+
+func (g *Broxygui) openProjectAction(b bool){
+	var fileDialog = widgets.NewQFileDialog2(g, "Open project", "", "")
+	fileDialog.SetFileMode(widgets.QFileDialog__DirectoryOnly);
+	fileDialog.SetOption(widgets.QFileDialog__ShowDirsOnly, false);
+	if fileDialog.Exec() != int(widgets.QDialog__Accepted) {
+		return
+	}
+	var fn = fileDialog.SelectedFiles()[0]
+	dir, file := filepath.Split(fn)
+	c, err := project.OpenPersistentProject(file,dir)
+	if err != nil{
+		g.ShowErrorMessage(fmt.Sprintf("Error while opening project: %s",err))
+		return
+	}
+
+	gui := NewBroxygui(nil,0)
+	s := bcore.NewSession(g.s.Settings, c, gui)
+	//Load All modules
+	modules.LoadModules(s)
+
+	gui.Show()
+	g.Close()
+}
+
+func (g *Broxygui) saveProjectAction(b bool){
+	// ask the user where he should save the project
+	var fileDialog = widgets.NewQFileDialog2(g, "Save as...", "", "")
+	fileDialog.SetAcceptMode(widgets.QFileDialog__AcceptSave)
+	if fileDialog.Exec() != int(widgets.QDialog__Accepted) {
+		println("false")
+	}
+	var fn = fileDialog.SelectedFiles()[0]
+	println(fn)
+	dir, file := filepath.Split(fn)
+	err := g.s.PersistentProject.Persist(file,dir)
+	if err != nil {
+		g.ShowErrorMessage(fmt.Sprintf("Error while persisting project: %s",err))
+		return
+	}
+
+	g.history.Add(&project.Project{file,dir})
+}
+
 
 func (g *Broxygui) newProjectAction(b bool){
 	p := filepath.Join(util.GetTmpDir(), fmt.Sprintf("%d",time.Now().UnixNano()))
 	fmt.Println(p)
-	c, _ := project.NewPersistentProject("NewProject",p)
+	c, err := project.NewPersistentProject("NewProject",p)
+
+	if err != nil {
+		g.ShowErrorMessage(fmt.Sprintf("Error while creating project: %s",err))
+		return
+	}
 
 	// temporary, for now, everytime I create a new project I save it in the history
 	gui := NewBroxygui(nil,0)
@@ -173,6 +227,7 @@ func ( g *Broxygui) gzipDecodeCheckBoxClicked(b bool){
 	g.s.PersistentProject.SaveSettings("project",g.s.GlobalSettings)
 }
 
+// used for testing
 func (g *Broxygui) emptySettings() widgets.QWidget_ITF {
 	widget := widgets.NewQWidget(nil, 0)
 	hLayout := widgets.NewQHBoxLayout()
