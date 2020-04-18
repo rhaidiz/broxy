@@ -12,6 +12,7 @@ import (
 
 	"github.com/elazarl/goproxy"
 	"github.com/rhaidiz/broxy/core"
+	_ "github.com/rhaidiz/broxy/core/project"
 	"github.com/rhaidiz/broxy/modules/coreproxy/model"
 	qtcore "github.com/therecipe/qt/core"
 	"github.com/atotto/clipboard"
@@ -58,24 +59,34 @@ func NewController(proxy *Coreproxy, proxygui *Gui, s *core.Session) *Controller
 		filter:         &model.Filter{},
 	}
 
+	// load settings and save settings
+	c.Sess.PersistentProject.LoadSettings("coreproxy", Stg)
+	c.Sess.PersistentProject.SaveSettings("coreproxy", Stg)
+
 	c.model = model.NewSortFilterModel(nil)
 	c.Module.OnReq = c.onReq
 	c.Module.OnResp = c.onResp
 	c.Module.Proxyh.OnRequest().HandleConnect(goproxy.FuncHttpsHandler(c.broxyConnectHandle))
 	c.Gui.SetTableModel(c.model)
-	c.Gui.StartProxy = c.startProxy
+	
+	// UI events
 	c.Gui.RowClicked = c.selectRow
-	c.Gui.Toggle = c.interceptorToggle
 	c.Gui.Forward = c.forward
 	c.Gui.Drop = c.drop
 	c.Gui.ApplyFilters = c.applyFilter
 	c.Gui.ResetFilters = c.resetFilter
-	c.Gui.ControllerInit = c.initUIContent
-	c.Gui.CheckReqInterception = c.checkReqInterception
-	c.Gui.CheckRespInterception = c.checkRespInterception
 	c.Gui.SaveCAClicked = c.downloadCAClicked
 	c.Gui.RightItemClicked = c.rightItemClicked
+
+	// UI settings events
+	c.Gui.StartProxy = c.startProxy
+	c.Gui.Toggle = c.interceptorToggle
+	c.Gui.CheckReqInterception = c.checkReqInterception
+	c.Gui.CheckRespInterception = c.checkRespInterception
 	c.Gui.CheckIgnoreHTTPS = c.ignoreHTTPSToggle
+
+	// UI init
+	c.Gui.ControllerInit = c.initUIContent
 	return c
 }
 
@@ -132,10 +143,12 @@ func (c *Controller) downloadCAClicked(b bool) {
 
 func (c *Controller) checkReqInterception(b bool) {
 	Stg.ReqIntercept = c.Gui.ReqInterceptCheckBox.IsChecked()
+	c.saveSettings()
 }
 
 func (c *Controller) checkRespInterception(b bool) {
 	Stg.RespIntercept = c.Gui.RespInterceptCheckBox.IsChecked()
+	c.saveSettings()
 }
 
 // Defaut history filters
@@ -250,6 +263,7 @@ func (c *Controller) startProxy(b bool) {
 		c.Sess.Info(c.Module.Name(), "Stopping proxy.")
 		c.Gui.StartStopButton.SetText("Start")
 	}
+	c.saveSettings()
 }
 
 // Executed when a response arrives
@@ -387,4 +401,8 @@ func (c *Controller) broxyConnectHandle(host string, ctx *goproxy.ProxyCtx) (*go
 		return goproxy.OkConnect, host
 	}
 	return goproxy.MitmConnect, host
+}
+
+func (c *Controller) saveSettings(){
+	c.Sess.PersistentProject.SaveSettings("coreproxy", Stg)
 }

@@ -26,6 +26,7 @@ func (c *Controller) interceptorToggle(b bool) {
 		}
 	}
 	c.Sess.Debug(c.Module.Name(), fmt.Sprintf("Interceptor is: %v", Stg.Interceptor))
+	c.saveSettings()
 }
 
 func (c *Controller) forward(b bool) {
