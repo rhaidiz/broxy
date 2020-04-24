@@ -14,7 +14,6 @@ import (
 	"github.com/rhaidiz/broxy/core"
 	_ "github.com/rhaidiz/broxy/core/project"
 	"github.com/rhaidiz/broxy/modules/coreproxy/model"
-	qtcore "github.com/therecipe/qt/core"
 	"github.com/atotto/clipboard"
 )
 
@@ -120,10 +119,7 @@ func (c *Controller) initUIContent() {
 }
 
 func (c *Controller) rightItemClicked(s string, r int) {
-	//req.URL.Scheme
-	//clipboard := c.Sess.QApp.Clipboard()
-	actualRow := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
-	req, _, _, _ := c.model.Custom.GetReqResp(actualRow - 1)
+	req, _, _, _ := c.model.Custom.GetReqResp(c.model.GetRowId(r))
 	if s == CopyURLLabel {
 		clipboard.WriteAll(fmt.Sprintf("%s://%s%s", req.URL.Scheme, req.Host, req.URL.Path))
 	} else if s == CopyBaseURLLabel {
@@ -208,8 +204,7 @@ func (c *Controller) resetFilter(b bool) {
 
 func (c *Controller) selectRow(r int) {
 	c.Gui.HideAllTabs()
-	actualRow := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
-	req, editedReq, resp, editedResp := c.model.Custom.GetReqResp(actualRow - 1)
+	req, editedReq, resp, editedResp := c.model.Custom.GetReqResp(c.model.GetRowId(r))
 	if req != nil {
 		c.Gui.ShowReqTab(req.ToString())
 	}
@@ -285,6 +280,8 @@ func (c *Controller) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Respo
 		ContentLength: int64(len(bodyBytes)),
 		Headers:       cloneHeaders(r.Header),
 	}
+
+	c.model.Custom.AddResponse(httpItem.Resp, ctx.Session)
 	// activate interceptor
 	_, dropped := c.dropped[ctx.Session]
 	if Stg.Interceptor && Stg.RespIntercept && !dropped {
@@ -306,12 +303,10 @@ func (c *Controller) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Respo
 				Headers:       cloneHeaders(editedResp.Header),
 			}
 			r = editedResp
+			c.model.Custom.AddEditedResponse(httpItem.EditedResp, ctx.Session)
 		}
+		
 	}
-
-	// add the response to the history
-	// TODO: For whatever reason, I have to use a full HTTPItem insteam of a Resp
-	c.model.Custom.EditItem(httpItem, ctx.Session)
 
 	return r
 }
@@ -352,6 +347,8 @@ func (c *Controller) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Reques
 		Params:        params,
 	}
 
+	c.model.Custom.AddRequest(httpItem.Req, ctx.Session)
+
 	// activate interceptor
 	if Stg.Interceptor && Stg.ReqIntercept {
 
@@ -381,13 +378,10 @@ func (c *Controller) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Reques
 			}
 			r = editedReq
 			resp = editedResp
-
+			c.model.Custom.AddEditedRequest(httpItem.EditedReq, ctx.Session)
 		}
 
 	}
-
-	// add the request to the history
-	c.model.Custom.AddItem(httpItem, ctx.Session)
 
 	return r, resp
 }

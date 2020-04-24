@@ -9,6 +9,19 @@ import (
 	"github.com/therecipe/qt/core"
 )
 
+var History []Row
+
+// used to map id to actual rows in the table
+var hashMapHistory   map[int64]int
+
+type Row struct {
+	ID				int64
+	Req        		*Request
+	Resp       		*Response
+	EditedReq  		*Request
+	EditedResp 		*Response
+}
+
 // Request represents an HTTP request logged in the history
 type Request struct {
 	URL           *url.URL
@@ -95,29 +108,6 @@ type HTTPItem struct {
 	EditedResp *Response
 }
 
-//func NewHTTPItem2() *HTTPItem {
-// func (f *HTTPItem) init() {
-// 	empty_req := &Request{
-// 		Proto:         "",
-// 		Method:        "",
-// 		Path:          "",
-// 		Schema:        "",
-// 		Host:          "",
-// 		ContentLength: -1,
-// 	}
-// 	empty_resp := &Response{
-// 		Proto:         "",
-// 		Status:        "",
-// 		StatusCode:    0,
-// 		ContentLength: -1,
-// 	}
-// 	f.ID = 0
-// 	f.Req = empty_req
-// 	f.Resp = empty_resp
-// 	f.EditedReq = empty_req
-// 	f.EditedResp = empty_resp
-// }
-
 const (
 	ID = iota
 	Host
@@ -156,6 +146,7 @@ var mutex = &sync.Mutex{}
 func (m *CustomTableModel) init() {
 	m.modelData = []HTTPItem{}
 	m.hashMap = make(map[int64]*HTTPItem)
+	hashMapHistory = make(map[int64]int)
 
 	m.ConnectHeaderData(m.headerData)
 	m.ConnectRowCount(m.rowCount)
@@ -189,9 +180,9 @@ func (m *CustomTableModel) headerData(section int, orientation core.Qt__Orientat
 }
 
 // GetReqResp retursn request, response, edited request and edited response for a given row in the history table
-func (m *CustomTableModel) GetReqResp(i int) (*Request, *Request, *Response, *Response) {
+func (m *CustomTableModel) GetReqResp(i int64) (*Request, *Request, *Response, *Response) {
 	if i >= 0 {
-		return m.modelData[i].Req, m.modelData[i].EditedReq, m.modelData[i].Resp, m.modelData[i].EditedResp
+		return History[hashMapHistory[i]].Req, History[hashMapHistory[i]].EditedReq, History[hashMapHistory[i]].Resp, History[hashMapHistory[i]].EditedResp
 	}
 	return nil, nil, nil, nil
 }
@@ -203,6 +194,46 @@ func (m *CustomTableModel) clearHistory() {
 	m.modelData = []HTTPItem{}
 	m.hashMap = make(map[int64]*HTTPItem)
 	m.EndRemoveRows()
+}
+
+// AddRequest adds a Request to the history
+func (m *CustomTableModel) AddRequest(r *Request, id int64){
+	mutex.Lock()
+	defer mutex.Unlock()
+	m.BeginInsertRows(core.NewQModelIndex(), len(History), len(History))
+	// create a new row with the request
+	t := &Row{ID:id, Req:r}
+	History = append(History, *t)
+	// save the i to a mapping with hasmap
+	hashMapHistory[id] = len(History)-1
+	m.EndInsertRows()
+}
+
+// AddEditedRequest adds an edited Request to the history
+func (m *CustomTableModel) AddEditedRequest(r *Request, id int64){
+	mutex.Lock()
+	defer mutex.Unlock()
+	row := hashMapHistory[id]
+	History[row].EditedReq = r
+	m.DataChanged(m.Index(row, 2, core.NewQModelIndex()), m.Index(row, 2, core.NewQModelIndex()), []int{Edit, Status, Length})
+}
+
+// AddEditedResponse adds an edited Response to the history
+func (m *CustomTableModel) AddEditedResponse(r *Response, id int64){
+	mutex.Lock()
+	defer mutex.Unlock()
+	row := hashMapHistory[id]
+	History[row].EditedResp = r
+	m.DataChanged(m.Index(row, 2, core.NewQModelIndex()), m.Index(row, 2, core.NewQModelIndex()), []int{Edit, Status, Length})
+}
+
+// AddResponse adds a Response to the history
+func (m *CustomTableModel) AddResponse(r *Response, id int64){
+	mutex.Lock()
+	defer mutex.Unlock()
+	row := hashMapHistory[id]
+	History[row].Resp = r
+	m.DataChanged(m.Index(row, 2, core.NewQModelIndex()), m.Index(row, 2, core.NewQModelIndex()), []int{Edit, Status, Length})
 }
 
 func (m *CustomTableModel) addItem(item *HTTPItem, i int64) {
@@ -230,7 +261,7 @@ func (m *CustomTableModel) editItem(item *HTTPItem, i int64) {
 }
 
 func (m *CustomTableModel) rowCount(*core.QModelIndex) int {
-	return len(m.modelData)
+	return len(History)
 }
 
 func (m *CustomTableModel) columnCount(*core.QModelIndex) int {
@@ -248,7 +279,7 @@ func (m *CustomTableModel) data(index *core.QModelIndex, role int) *core.QVarian
 		return core.NewQVariant()
 	}
 
-	item := m.modelData[index.Row()]
+	item := History[index.Row()]
 	switch index.Column() {
 	case ID:
 		return core.NewQVariant1(item.ID)

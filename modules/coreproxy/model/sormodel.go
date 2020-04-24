@@ -36,6 +36,10 @@ func (m *SortFilterModel) SetFilter(f *Filter) {
 	m.InvalidateFilter()
 }
 
+func (m *SortFilterModel) GetRowId(r int) int64{
+	return int64(m.Index(r, 0, core.NewQModelIndex()).Data(ID).ToInt(nil))
+}
+
 // ResetFilters remove all filters on the model
 func (m *SortFilterModel) ResetFilters() {
 	m.InvalidateFilter()
@@ -45,7 +49,7 @@ func (m *SortFilterModel) filterAcceptsRow(sourceRow int, sourceParent *core.QMo
 	if m.filter == nil {
 		return true
 	}
-	req, editedReq, resp, editedResp := m.Custom.GetReqResp(sourceRow)
+	req, editedReq, resp, editedResp := m.Custom.GetReqResp(int64(sourceRow))
 
 	// extension
 	if (len(m.filter.HideExt) > 0 && m.filter.HideExt[req.Extension] == true) ||
