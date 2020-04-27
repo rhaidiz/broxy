@@ -2,6 +2,10 @@ package coreproxy
 
 import (
 	"bytes"
+	"log"
+	//TODO: I don't like to have the encoding/json here, create a generic 
+	// encofing interface instead
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -37,9 +41,22 @@ type Controller struct {
 	responsesQueue int
 
 	dropped map[int64]bool
+
+	// encoders
+	requestEnc 				*json.Encoder
+	requestEditedEnc		*json.Encoder
+	responseEnc				*json.Encoder
+	responseEditedEnc		*json.Encoder
+
+	// decoders
+	requestDec				*json.Decoder
+	requestEditedDec		*json.Decoder
+	responseDec				*json.Decoder
+	responseEditedDec		*json.Decoder
 }
 
 var mutex = &sync.Mutex{}
+var count int64
 
 // NewController creates a new controller for the core intercetp proxy
 func NewController(proxy *Coreproxy, proxygui *Gui, s *core.Session) *Controller {
@@ -55,14 +72,77 @@ func NewController(proxy *Coreproxy, proxygui *Gui, s *core.Session) *Controller
 		requestsQueue:  0,
 		responsesQueue: 0,
 		dropped:        make(map[int64]bool),
-		filter:         &model.Filter{},
+		filter:         &model.Filter{},		
 	}
 
+	// get the encoders
+	c.requestEnc, _ 		= s.PersistentProject.FileEncoder("requests")
+	c.requestEditedEnc, _ 	= s.PersistentProject.FileEncoder("requests_edited")
+	c.responseEnc, _ 		= s.PersistentProject.FileEncoder("response")
+	c.responseEditedEnc, _ 	= s.PersistentProject.FileEncoder("response_edited")
+
+	// get the decoders, which I only need to read the history the first time
+	c.requestDec, _ 		= s.PersistentProject.FileDecoder("requests")
+	c.requestEditedDec, _ 	= s.PersistentProject.FileDecoder("requests_edited")
+	c.responseDec, _ 		= s.PersistentProject.FileDecoder("response")
+	c.responseEditedDec, _ 	= s.PersistentProject.FileDecoder("response_edited")
+
+	// load the history
+	count = 1
+	for {
+		// load the requests
+		var req model.Request
+		var row model.Row
+		if err := c.requestDec.Decode(&req); err != nil {
+			break
+		}
+		row.ID = req.ID
+		if req.ID > count{
+			count = req.ID
+		}
+		row.Req = &req
+		model.History = append(model.History, &row)
+		model.HashMapHistory[row.ID] = len(model.History) - 1
+	}
+	for{
+		// load edited requests
+		var req model.Request
+		if err := c.requestEditedDec.Decode(&req); err != nil {
+			break
+		}
+		row := model.History[model.HashMapHistory[req.ID]]
+		(*row).EditedReq = &req
+	}
+	for{
+		// load the responses
+		var resp model.Response
+		if err := c.responseDec.Decode(&resp); err != nil {
+			break
+		}
+		row := model.History[model.HashMapHistory[resp.ID]]
+		(*row).Resp = &resp
+	}
+	for{
+		// load edited responses
+		var resp model.Response
+		if err := c.responseEditedDec.Decode(&resp); err != nil {
+			break
+		}
+		row := model.History[model.HashMapHistory[resp.ID]]
+		(*row).EditedResp = &resp
+	}
+
+	//count = int64(len(model.History))
+	log.Printf("count: %d\n", count)
 	// load settings and save settings
 	c.Sess.PersistentProject.LoadSettings("coreproxy", Stg)
 	c.Sess.PersistentProject.SaveSettings("coreproxy", Stg)
 
+
+
 	c.model = model.NewSortFilterModel(nil)
+	//c.model.Custom.Refresh()
+
 	c.Module.OnReq = c.onReq
 	c.Module.OnResp = c.onResp
 	c.Module.Proxyh.OnRequest().HandleConnect(goproxy.FuncHttpsHandler(c.broxyConnectHandle))
@@ -273,6 +353,7 @@ func (c *Controller) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Respo
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
 	httpItem.Resp = &model.Response{
+		ID:			   count + ctx.Session,
 		Status:        r.Status,
 		StatusCode:    r.StatusCode,
 		Body:          bodyBytes,
@@ -281,7 +362,8 @@ func (c *Controller) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Respo
 		Headers:       cloneHeaders(r.Header),
 	}
 
-	c.model.Custom.AddResponse(httpItem.Resp, ctx.Session)
+	c.responseEnc.Encode(httpItem.Resp)
+	c.model.Custom.AddResponse(httpItem.Resp, count+ctx.Session)
 	// activate interceptor
 	_, dropped := c.dropped[ctx.Session]
 	if Stg.Interceptor && Stg.RespIntercept && !dropped {
@@ -295,6 +377,7 @@ func (c *Controller) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Respo
 			editedBodyBytes, _ = ioutil.ReadAll(editedResp.Body)
 			editedResp.Body = ioutil.NopCloser(bytes.NewBuffer(editedBodyBytes))
 			httpItem.EditedResp = &model.Response{
+				ID:			   count + ctx.Session,
 				Status:        editedResp.Status,
 				StatusCode:    editedResp.StatusCode,
 				Proto:         editedResp.Proto,
@@ -303,11 +386,11 @@ func (c *Controller) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Respo
 				Headers:       cloneHeaders(editedResp.Header),
 			}
 			r = editedResp
-			c.model.Custom.AddEditedResponse(httpItem.EditedResp, ctx.Session)
+			c.responseEditedEnc.Encode(httpItem.EditedResp)
+			c.model.Custom.AddEditedResponse(httpItem.EditedResp, count+ctx.Session)
 		}
 		
 	}
-
 	return r
 }
 
@@ -336,6 +419,7 @@ func (c *Controller) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Reques
 	}
 	// this is the original request, save it for the history
 	httpItem.Req = &model.Request{
+		ID:			   count + ctx.Session,
 		URL:           r.URL,
 		Method:        r.Method,
 		Body:          bodyBytes,
@@ -347,7 +431,8 @@ func (c *Controller) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Reques
 		Params:        params,
 	}
 
-	c.model.Custom.AddRequest(httpItem.Req, ctx.Session)
+	c.requestEnc.Encode(httpItem.Req)
+	c.model.Custom.AddRequest(httpItem.Req, count+ctx.Session)
 
 	// activate interceptor
 	if Stg.Interceptor && Stg.ReqIntercept {
@@ -367,6 +452,7 @@ func (c *Controller) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Reques
 			}
 
 			httpItem.EditedReq = &model.Request{
+				ID:			   count + ctx.Session,
 				URL:           editedReq.URL,
 				Method:        editedReq.Method,
 				Body:          editedBodyBytes,
@@ -378,11 +464,11 @@ func (c *Controller) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Reques
 			}
 			r = editedReq
 			resp = editedResp
-			c.model.Custom.AddEditedRequest(httpItem.EditedReq, ctx.Session)
+			c.requestEditedEnc.Encode(httpItem.EditedReq)
+			c.model.Custom.AddEditedRequest(httpItem.EditedReq, count+ctx.Session)
 		}
 
 	}
-
 	return r, resp
 }
 

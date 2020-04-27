@@ -2,7 +2,6 @@ package model
 
 import (
 	"strings"
-
 	"github.com/therecipe/qt/core"
 )
 
@@ -49,7 +48,11 @@ func (m *SortFilterModel) filterAcceptsRow(sourceRow int, sourceParent *core.QMo
 	if m.filter == nil {
 		return true
 	}
-	req, editedReq, resp, editedResp := m.Custom.GetReqResp(int64(sourceRow))
+	req, editedReq, resp, editedResp := m.Custom.GetReqResp(m.GetRowId(sourceRow))
+
+	if req == nil {
+		return true
+	}
 
 	// extension
 	if (len(m.filter.HideExt) > 0 && m.filter.HideExt[req.Extension] == true) ||

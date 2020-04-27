@@ -100,6 +100,26 @@ func (p *PersistentProject) loadFromFile(m,t string, stg interface{}) error {
 	return json.Unmarshal(byteValue, &stg)
 }
 
+// FileEncoder provides an Encoder to write stuff to file
+func (p *PersistentProject) FileEncoder(m string) (*json.Encoder, error) {
+	fileName := filepath.Join(p.projectPath, fmt.Sprintf("%s.json",strings.ToLower(m)))
+	jsonFile, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return json.NewEncoder(jsonFile), nil
+}
+
+// FileDecoder provides a Decoder to read stuff from file
+func (p *PersistentProject) FileDecoder(m string) (*json.Decoder, error) {
+	fileName := filepath.Join(p.projectPath, fmt.Sprintf("%s.json",strings.ToLower(m)))
+	jsonFile, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_RDONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return json.NewDecoder(jsonFile), nil
+}
+
 // Persist persists the project to disk in location pa
 func (p *PersistentProject) Persist(pn, pa string) error {
 	dest := filepath.Join(pa,pn)

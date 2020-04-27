@@ -9,10 +9,10 @@ import (
 	"github.com/therecipe/qt/core"
 )
 
-var History []Row
+var History []*Row
 
 // used to map id to actual rows in the table
-var hashMapHistory   map[int64]int
+var HashMapHistory  = make(map[int64]int)
 
 type Row struct {
 	ID				int64
@@ -24,6 +24,7 @@ type Row struct {
 
 // Request represents an HTTP request logged in the history
 type Request struct {
+	ID			  int64
 	URL           *url.URL
 	Proto         string
 	Method        string
@@ -64,6 +65,7 @@ func (r *Request) ToString() string {
 
 // Response represents an HTTP response logged in the history
 type Response struct {
+	ID			  int64
 	Proto         string
 	Status        string
 	StatusCode    int
@@ -119,34 +121,34 @@ const (
 	Length
 )
 
-func (m *CustomTableModel) row(i *HTTPItem) int {
+/*func (m *CustomTableModel) row(i *HTTPItem) int {
 	for index, item := range m.modelData {
 		if item.Pointer() == i.Pointer() {
 			return index
 		}
 	}
 	return 0
-}
+}*/
 
 // CustomTableModel represents a table model used to populate the history QtTableView
 type CustomTableModel struct {
 	core.QAbstractTableModel
 	_ func() `constructor:"init"`
 
-	modelData []HTTPItem
-	hashMap   map[int64]*HTTPItem
+	//modelData []HTTPItem
+	//hashMap   map[int64]*HTTPItem
 
-	_ func(item *HTTPItem, i int64) `signal:"addItem,auto"`
-	_ func(item *HTTPItem, i int64) `signal:editItem,auto"`
+/*	_ func(item *HTTPItem, i int64) `signal:"addItem,auto"`
+	_ func(item *HTTPItem, i int64) `signal:editItem,auto"`*/
 	_ func()                        `signal:clearHistory,auto"`
 }
 
 var mutex = &sync.Mutex{}
 
 func (m *CustomTableModel) init() {
-	m.modelData = []HTTPItem{}
-	m.hashMap = make(map[int64]*HTTPItem)
-	hashMapHistory = make(map[int64]int)
+	//m.modelData = []HTTPItem{}
+	//m.hashMap = make(map[int64]*HTTPItem)
+	//HashMapHistory = make(map[int64]int)
 
 	m.ConnectHeaderData(m.headerData)
 	m.ConnectRowCount(m.rowCount)
@@ -179,21 +181,31 @@ func (m *CustomTableModel) headerData(section int, orientation core.Qt__Orientat
 	return core.NewQVariant()
 }
 
-// GetReqResp retursn request, response, edited request and edited response for a given row in the history table
+// GetReqResp retursn request, response, edited request and edited response for a given context.ID
 func (m *CustomTableModel) GetReqResp(i int64) (*Request, *Request, *Response, *Response) {
-	if i >= 0 {
-		return History[hashMapHistory[i]].Req, History[hashMapHistory[i]].EditedReq, History[hashMapHistory[i]].Resp, History[hashMapHistory[i]].EditedResp
+	if val, ok := HashMapHistory[i]; ok {
+		return History[val].Req, History[val].EditedReq, History[val].Resp, History[val].EditedResp
+	}else{
+		for row, item := range History{
+			//fmt.Printf("ID: %d\n", item.ID)
+			//fmt.Printf("i: %d\n", i)
+			if item.ID == i{
+				HashMapHistory[i] = row
+				return History[row].Req, History[row].EditedReq, History[row].Resp, History[row].EditedResp
+			}
+		}
 	}
+	//fmt.Println("here")
 	return nil, nil, nil, nil
 }
 
 func (m *CustomTableModel) clearHistory() {
 	mutex.Lock()
 	defer mutex.Unlock()
-	m.BeginRemoveRows(core.NewQModelIndex(), 0, len(m.modelData))
+	/*m.BeginRemoveRows(core.NewQModelIndex(), 0, len(m.modelData))
 	m.modelData = []HTTPItem{}
 	m.hashMap = make(map[int64]*HTTPItem)
-	m.EndRemoveRows()
+	m.EndRemoveRows()*/
 }
 
 // AddRequest adds a Request to the history
@@ -203,9 +215,9 @@ func (m *CustomTableModel) AddRequest(r *Request, id int64){
 	m.BeginInsertRows(core.NewQModelIndex(), len(History), len(History))
 	// create a new row with the request
 	t := &Row{ID:id, Req:r}
-	History = append(History, *t)
+	History = append(History, t)
 	// save the i to a mapping with hasmap
-	hashMapHistory[id] = len(History)-1
+	HashMapHistory[id] = len(History)-1
 	m.EndInsertRows()
 }
 
@@ -213,7 +225,7 @@ func (m *CustomTableModel) AddRequest(r *Request, id int64){
 func (m *CustomTableModel) AddEditedRequest(r *Request, id int64){
 	mutex.Lock()
 	defer mutex.Unlock()
-	row := hashMapHistory[id]
+	row := HashMapHistory[id]
 	History[row].EditedReq = r
 	m.DataChanged(m.Index(row, 2, core.NewQModelIndex()), m.Index(row, 2, core.NewQModelIndex()), []int{Edit, Status, Length})
 }
@@ -222,7 +234,7 @@ func (m *CustomTableModel) AddEditedRequest(r *Request, id int64){
 func (m *CustomTableModel) AddEditedResponse(r *Response, id int64){
 	mutex.Lock()
 	defer mutex.Unlock()
-	row := hashMapHistory[id]
+	row := HashMapHistory[id]
 	History[row].EditedResp = r
 	m.DataChanged(m.Index(row, 2, core.NewQModelIndex()), m.Index(row, 2, core.NewQModelIndex()), []int{Edit, Status, Length})
 }
@@ -231,12 +243,12 @@ func (m *CustomTableModel) AddEditedResponse(r *Response, id int64){
 func (m *CustomTableModel) AddResponse(r *Response, id int64){
 	mutex.Lock()
 	defer mutex.Unlock()
-	row := hashMapHistory[id]
+	row := HashMapHistory[id]
 	History[row].Resp = r
 	m.DataChanged(m.Index(row, 2, core.NewQModelIndex()), m.Index(row, 2, core.NewQModelIndex()), []int{Edit, Status, Length})
 }
 
-func (m *CustomTableModel) addItem(item *HTTPItem, i int64) {
+/*func (m *CustomTableModel) addItem(item *HTTPItem, i int64) {
 	mutex.Lock()
 	defer mutex.Unlock()
 	m.BeginInsertRows(core.NewQModelIndex(), len(m.modelData), len(m.modelData))
@@ -258,7 +270,7 @@ func (m *CustomTableModel) editItem(item *HTTPItem, i int64) {
 	m.modelData[row].EditedResp = item.EditedResp
 
 	m.DataChanged(m.Index(row, 2, core.NewQModelIndex()), m.Index(row, 2, core.NewQModelIndex()), []int{Edit, Status, Length})
-}
+}*/
 
 func (m *CustomTableModel) rowCount(*core.QModelIndex) int {
 	return len(History)
