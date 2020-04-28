@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"io/ioutil"
+
+	"github.com/rhaidiz/broxy/core/project/decoder"
 )
 
 // PersistentProject represents a persistent project
@@ -119,6 +121,44 @@ func (p *PersistentProject) FileDecoder(m string) (*json.Decoder, error) {
 	}
 	return json.NewDecoder(jsonFile), nil
 }
+
+type FileDecoder struct {
+	decoder.Decoder
+	actualDecoder	*json.Decoder
+}
+
+func(d *FileDecoder) Decode(i interface{}) error {
+	return d.actualDecoder.Decode(i)
+}
+
+type FileEncoder struct {
+	decoder.Encoder
+	actualEncoder	*json.Encoder
+}
+
+func(d *FileEncoder) Encode(i interface{}) error {
+	return d.actualEncoder.Encode(i)
+}
+
+func (p *PersistentProject) FileDecoder2(m string) (decoder.Decoder, error){
+	fileName := filepath.Join(p.projectPath, fmt.Sprintf("%s.json",strings.ToLower(m)))
+	jsonFile, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_RDONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return &FileDecoder{actualDecoder: json.NewDecoder(jsonFile)},nil
+}
+
+func (p *PersistentProject) FileEncoder2(m string) (decoder.Encoder, error) {
+	fileName := filepath.Join(p.projectPath, fmt.Sprintf("%s.json",strings.ToLower(m)))
+	jsonFile, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return &FileEncoder{actualEncoder: json.NewEncoder(jsonFile)},nil
+}
+
+
 
 // Persist persists the project to disk in location pa
 func (p *PersistentProject) Persist(pn, pa string) error {

@@ -5,7 +5,8 @@ import (
 	"log"
 	//TODO: I don't like to have the encoding/json here, create a generic 
 	// encofing interface instead
-	"encoding/json"
+	// "encoding/json"
+	"github.com/rhaidiz/broxy/core/project/decoder"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -43,16 +44,16 @@ type Controller struct {
 	dropped map[int64]bool
 
 	// encoders
-	requestEnc 				*json.Encoder
-	requestEditedEnc		*json.Encoder
-	responseEnc				*json.Encoder
-	responseEditedEnc		*json.Encoder
+	requestEnc 				decoder.Encoder
+	requestEditedEnc		decoder.Encoder
+	responseEnc				decoder.Encoder
+	responseEditedEnc		decoder.Encoder
 
 	// decoders
-	requestDec				*json.Decoder
-	requestEditedDec		*json.Decoder
-	responseDec				*json.Decoder
-	responseEditedDec		*json.Decoder
+	requestDec				decoder.Decoder
+	requestEditedDec		decoder.Decoder
+	responseDec				decoder.Decoder
+	responseEditedDec		decoder.Decoder
 }
 
 var mutex = &sync.Mutex{}
@@ -76,16 +77,16 @@ func NewController(proxy *Coreproxy, proxygui *Gui, s *core.Session) *Controller
 	}
 
 	// get the encoders
-	c.requestEnc, _ 		= s.PersistentProject.FileEncoder("requests")
-	c.requestEditedEnc, _ 	= s.PersistentProject.FileEncoder("requests_edited")
-	c.responseEnc, _ 		= s.PersistentProject.FileEncoder("response")
-	c.responseEditedEnc, _ 	= s.PersistentProject.FileEncoder("response_edited")
+	c.requestEnc, _ 		= s.PersistentProject.FileEncoder2("requests")
+	c.requestEditedEnc, _ 	= s.PersistentProject.FileEncoder2("requests_edited")
+	c.responseEnc, _ 		= s.PersistentProject.FileEncoder2("response")
+	c.responseEditedEnc, _ 	= s.PersistentProject.FileEncoder2("response_edited")
 
 	// get the decoders, which I only need to read the history the first time
-	c.requestDec, _ 		= s.PersistentProject.FileDecoder("requests")
-	c.requestEditedDec, _ 	= s.PersistentProject.FileDecoder("requests_edited")
-	c.responseDec, _ 		= s.PersistentProject.FileDecoder("response")
-	c.responseEditedDec, _ 	= s.PersistentProject.FileDecoder("response_edited")
+	c.requestDec, _ 		= s.PersistentProject.FileDecoder2("requests")
+	c.requestEditedDec, _ 	= s.PersistentProject.FileDecoder2("requests_edited")
+	c.responseDec, _ 		= s.PersistentProject.FileDecoder2("response")
+	c.responseEditedDec, _ 	= s.PersistentProject.FileDecoder2("response_edited")
 
 	// load the history
 	count = 1
@@ -362,7 +363,7 @@ func (c *Controller) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Respo
 		Headers:       cloneHeaders(r.Header),
 	}
 
-	c.responseEnc.Encode(httpItem.Resp)
+	go func(){ c.responseEnc.Encode(httpItem.Resp) }()
 	c.model.Custom.AddResponse(httpItem.Resp, count+ctx.Session)
 	// activate interceptor
 	_, dropped := c.dropped[ctx.Session]
@@ -386,7 +387,7 @@ func (c *Controller) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Respo
 				Headers:       cloneHeaders(editedResp.Header),
 			}
 			r = editedResp
-			c.responseEditedEnc.Encode(httpItem.EditedResp)
+			go func(){ c.responseEditedEnc.Encode(httpItem.EditedResp) }()
 			c.model.Custom.AddEditedResponse(httpItem.EditedResp, count+ctx.Session)
 		}
 		
@@ -431,7 +432,7 @@ func (c *Controller) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Reques
 		Params:        params,
 	}
 
-	c.requestEnc.Encode(httpItem.Req)
+	go func(){ c.requestEnc.Encode(httpItem.Req) }()
 	c.model.Custom.AddRequest(httpItem.Req, count+ctx.Session)
 
 	// activate interceptor
@@ -464,7 +465,7 @@ func (c *Controller) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Reques
 			}
 			r = editedReq
 			resp = editedResp
-			c.requestEditedEnc.Encode(httpItem.EditedReq)
+			go func(){ c.requestEditedEnc.Encode(httpItem.EditedReq) }()
 			c.model.Custom.AddEditedRequest(httpItem.EditedReq, count+ctx.Session)
 		}
 
