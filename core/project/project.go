@@ -127,8 +127,12 @@ type FileDecoder struct {
 	actualDecoder	*json.Decoder
 }
 
-func(d *FileDecoder) Decode(i interface{}) error {
+func (d *FileDecoder) Decode(i interface{}) error {
 	return d.actualDecoder.Decode(i)
+}
+
+func (d *FileDecoder) Unmarshal(data []byte, v interface{}) error {
+	return json.Unmarshal(data, v)
 }
 
 type FileEncoder struct {
@@ -136,8 +140,12 @@ type FileEncoder struct {
 	actualEncoder	*json.Encoder
 }
 
-func(d *FileEncoder) Encode(i interface{}) error {
+func (d *FileEncoder) Encode(i interface{}) error {
 	return d.actualEncoder.Encode(i)
+}
+
+func (d *FileEncoder) Marshal(v interface{}) ([]byte, error){
+	return json.Marshal(v)
 }
 
 func (p *PersistentProject) FileDecoder2(m string) (decoder.Decoder, error){
@@ -158,6 +166,10 @@ func (p *PersistentProject) FileEncoder2(m string) (decoder.Encoder, error) {
 	return &FileEncoder{actualEncoder: json.NewEncoder(jsonFile)},nil
 }
 
+func (p *PersistentProject) CreateFile(f string) (*os.File, error){
+	fileName := filepath.Join(p.projectPath, fmt.Sprintf("%s.json",strings.ToLower(f)))
+	return os.Create(fileName)
+}
 
 
 // Persist persists the project to disk in location pa

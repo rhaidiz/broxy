@@ -2,11 +2,12 @@ package repeater
 
 import (
 	"strconv"
-
 	"github.com/rhaidiz/broxy/core"
 	qtcore "github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
 )
+
+var tabNum int
 
 // Gui represents the Gui of the repeater module
 type Gui struct {
@@ -14,16 +15,18 @@ type Gui struct {
 	Sess *core.Session
 
 	repeaterTabs *widgets.QTabWidget
-	tabs         []*Tab
+	tabs         []*TabGui
 	tabNum       int
 	tabRemoved   bool
 
-	GoClick func(*Tab)
+	GoClick func(*TabGui)
+	NewTabEvent func(string, string)
 	_       func(i int) `signal:"changedTab"`
 }
 
 // Tab represents a tab in the repeater module
-type Tab struct {
+type TabGui struct {
+	id				int
 	goBtn          *widgets.QPushButton
 	cancelBtn      *widgets.QPushButton
 	HostLine       *widgets.QLineEdit
@@ -33,6 +36,7 @@ type Tab struct {
 
 // NewGui creates a new Gui for the repeater module
 func NewGui(s *core.Session) *Gui {
+	tabNum = 1
 	return &Gui{Sess: s, tabNum: 1, tabRemoved: false}
 }
 
@@ -50,7 +54,7 @@ func (g *Gui) GetModuleGui() interface{}  {
 	g.repeaterTabs.ConnectTabCloseRequested(g.handleClose)
 
 	//g.repeaterTabs.AddTab(g.NewTab(), strconv.Itoa(g.tabNum))
-	g.repeaterTabs.AddTab(g.NewEmptyTab(), "+")
+	g.repeaterTabs.AddTab(widgets.NewQWidget(nil, 0), "+")
 
 	return g.repeaterTabs
 
@@ -66,23 +70,27 @@ func (g *Gui) changedTab(i int) {
 		g.repeaterTabs.SetCurrentIndex(i - 1)
 	} else if i == g.repeaterTabs.Count()-1 {
 		// add a new tab before me
-		g.repeaterTabs.InsertTab(g.repeaterTabs.Count()-1, g.NewEmptyTab(), strconv.Itoa(g.tabNum))
-		g.tabNum = g.tabNum + 1
-		g.repeaterTabs.SetCurrentIndex(g.repeaterTabs.Count() - 2)
+		//g.repeaterTabs.InsertTab(g.repeaterTabs.Count()-1, g.NewEmptyTab(), strconv.Itoa(g.tabNum))
+		//g.tabNum = g.tabNum + 1
+		//g.repeaterTabs.SetCurrentIndex(g.repeaterTabs.Count() - 2)
+		g.NewTabEvent("","")
+		//g.AddNewTab("","")
 	}
 	g.tabRemoved = false
 }
 
 // AddNewTab adds a new repeater tab
-func (g *Gui) AddNewTab(host string, request string) {
-	g.tabNum = g.tabNum + 1
-	g.repeaterTabs.InsertTab(g.repeaterTabs.Count()-1, g.NewTab(host, request), host)
+func (g *Gui) AddNewTab(id int, host string, request string) {
+	//g.NewTabEvent(host, request)
+	g.repeaterTabs.InsertTab(g.repeaterTabs.Count()-1, g.NewTab(id, host, request), strconv.Itoa(id))
+	//g.tabNum = g.tabNum + 1
+	//tabNum = g.tabNum
 	g.repeaterTabs.SetCurrentIndex(g.repeaterTabs.Count() - 2)
 }
 
 // NewTab adds a new tab
-func (g *Gui) NewTab(host string, request string) widgets.QWidget_ITF {
-	t := &Tab{}
+func (g *Gui) NewTab(id int, host string, request string) widgets.QWidget_ITF {
+	t := &TabGui{id: id}
 	g.tabs = append(g.tabs, t)
 	mainWidget := widgets.NewQWidget(nil, 0)
 	vlayout := widgets.NewQVBoxLayout()
@@ -114,15 +122,18 @@ func (g *Gui) NewTab(host string, request string) widgets.QWidget_ITF {
 	splitter.AddWidget(t.ResponseEditor)
 
 	vlayout.AddWidget(splitter, 0, 0)
-
+	//i := g.repeaterTabs.CurrentIndex()
+	/*if(g.repeaterTabs.TabText(i) != "+"){
+		g.NewTabEvent(host, request)
+	}()*/
 	return mainWidget
 }
 
 // NewEmptyTab adds a new empty tab
-func (g *Gui) NewEmptyTab() widgets.QWidget_ITF {
+/*func (g *Gui) NewEmptyTab() widgets.QWidget_ITF {
 	return g.NewTab("", "")
 
-}
+}*/
 
 // Title returns the time of this Gui
 func (g *Gui) Title() string {
