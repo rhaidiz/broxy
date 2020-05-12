@@ -150,7 +150,7 @@ func (d *FileEncoder) Marshal(v interface{}) ([]byte, error){
 
 func (p *PersistentProject) FileDecoder2(m string) (decoder.Decoder, error){
 	fileName := filepath.Join(p.projectPath, fmt.Sprintf("%s.json",strings.ToLower(m)))
-	jsonFile, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_RDONLY, 0644)
+	jsonFile, err := os.OpenFile(fileName, os.O_RDONLY, 0644)
 	if err != nil {
 		return nil, err
 	}

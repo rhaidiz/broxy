@@ -19,8 +19,11 @@ type Gui struct {
 	tabNum       int
 	tabRemoved   bool
 
-	GoClick func(*TabGui)
+	//GoClick func(*TabGui)
+	GoClick func(int, string, string, chan string)
 	NewTabEvent func(string, string)
+	RemoveTabEvent func(*TabGui)
+	Load func()
 	_       func(i int) `signal:"changedTab"`
 }
 
@@ -48,13 +51,15 @@ func (g *Gui) GetSettings() interface{} {
 func (g *Gui) GetModuleGui() interface{}  {
 
 	g.repeaterTabs = widgets.NewQTabWidget(nil)
+	g.Load()
 	g.repeaterTabs.SetDocumentMode(true)
-	g.repeaterTabs.ConnectCurrentChanged(g.changedTab)
 	g.repeaterTabs.SetTabsClosable(true)
 	g.repeaterTabs.ConnectTabCloseRequested(g.handleClose)
-
+	g.repeaterTabs.ConnectCurrentChanged(g.changedTab)
 	//g.repeaterTabs.AddTab(g.NewTab(), strconv.Itoa(g.tabNum))
 	g.repeaterTabs.AddTab(widgets.NewQWidget(nil, 0), "+")
+	// the following line is to remove the closable button from the last tab
+	g.repeaterTabs.TabBar().SetTabButton(g.repeaterTabs.Count()-1, widgets.QTabBar__LeftSide, nil) //.Hide()
 
 	return g.repeaterTabs
 
@@ -62,6 +67,7 @@ func (g *Gui) GetModuleGui() interface{}  {
 
 func (g *Gui) handleClose(index int) {
 	g.tabRemoved = true
+	g.RemoveTabEvent(g.tabs[index])
 	g.repeaterTabs.RemoveTab(index)
 }
 
@@ -69,27 +75,21 @@ func (g *Gui) changedTab(i int) {
 	if i == g.repeaterTabs.Count()-1 && g.tabRemoved && g.repeaterTabs.Count() > 1 {
 		g.repeaterTabs.SetCurrentIndex(i - 1)
 	} else if i == g.repeaterTabs.Count()-1 {
-		// add a new tab before me
-		//g.repeaterTabs.InsertTab(g.repeaterTabs.Count()-1, g.NewEmptyTab(), strconv.Itoa(g.tabNum))
-		//g.tabNum = g.tabNum + 1
-		//g.repeaterTabs.SetCurrentIndex(g.repeaterTabs.Count() - 2)
+		// This branch runs only when a new tab is added with the + button
+		// or the first time I load the interface
 		g.NewTabEvent("","")
-		//g.AddNewTab("","")
 	}
 	g.tabRemoved = false
 }
 
 // AddNewTab adds a new repeater tab
-func (g *Gui) AddNewTab(id int, host string, request string) {
-	//g.NewTabEvent(host, request)
-	g.repeaterTabs.InsertTab(g.repeaterTabs.Count()-1, g.NewTab(id, host, request), strconv.Itoa(id))
-	//g.tabNum = g.tabNum + 1
-	//tabNum = g.tabNum
+func (g *Gui) AddNewTab(id int, host, request, response string) {
+	g.repeaterTabs.InsertTab(g.repeaterTabs.Count()-1, g.NewTab(id, host, request, response), strconv.Itoa(id))
 	g.repeaterTabs.SetCurrentIndex(g.repeaterTabs.Count() - 2)
 }
 
 // NewTab adds a new tab
-func (g *Gui) NewTab(id int, host string, request string) widgets.QWidget_ITF {
+func (g *Gui) NewTab(id int, host, request, response string) widgets.QWidget_ITF {
 	t := &TabGui{id: id}
 	g.tabs = append(g.tabs, t)
 	mainWidget := widgets.NewQWidget(nil, 0)
@@ -101,7 +101,16 @@ func (g *Gui) NewTab(id int, host string, request string) widgets.QWidget_ITF {
 
 	t.goBtn = widgets.NewQPushButton2("Go", nil)
 	t.cancelBtn = widgets.NewQPushButton2("Cancel", nil)
-	t.goBtn.ConnectClicked(func(b bool) { g.GoClick(t) })
+	t.goBtn.ConnectClicked(func(b bool) {
+		c := make(chan string)
+		request := t.RequestEditor.ToPlainText()
+		go g.GoClick(id, host, request, c)
+		go func(){
+			for resp := range c{
+				t.ResponseEditor.SetPlainText(resp)
+			}
+		}()
+	})
 	hlayout.AddWidget(t.goBtn, 0, 0)
 	hlayout.AddWidget(t.cancelBtn, 0, 0)
 
@@ -118,22 +127,13 @@ func (g *Gui) NewTab(id int, host string, request string) widgets.QWidget_ITF {
 	t.RequestEditor.SetPlainText(request)
 	t.ResponseEditor = widgets.NewQPlainTextEdit(nil)
 	t.ResponseEditor.SetReadOnly(true)
+	t.ResponseEditor.SetPlainText(response)
 	splitter.AddWidget(t.RequestEditor)
 	splitter.AddWidget(t.ResponseEditor)
 
 	vlayout.AddWidget(splitter, 0, 0)
-	//i := g.repeaterTabs.CurrentIndex()
-	/*if(g.repeaterTabs.TabText(i) != "+"){
-		g.NewTabEvent(host, request)
-	}()*/
 	return mainWidget
 }
-
-// NewEmptyTab adds a new empty tab
-/*func (g *Gui) NewEmptyTab() widgets.QWidget_ITF {
-	return g.NewTab("", "")
-
-}*/
 
 // Title returns the time of this Gui
 func (g *Gui) Title() string {
