@@ -171,6 +171,11 @@ func (p *PersistentProject) CreateFile(f string) (*os.File, error){
 	return os.Create(fileName)
 }
 
+func (p *PersistentProject) DeleteFile(f string) error {
+	fileName := filepath.Join(p.projectPath, fmt.Sprintf("%s.json",strings.ToLower(f)))
+	return os.Remove(fileName)
+}
+
 
 // Persist persists the project to disk in location pa
 func (p *PersistentProject) Persist(pn, pa string) error {

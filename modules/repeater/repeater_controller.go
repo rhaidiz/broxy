@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"log"
+	"time"
 
 	"github.com/rhaidiz/broxy/core"
 	"github.com/rhaidiz/broxy/core/project/decoder"
@@ -35,6 +35,7 @@ type Tab struct {
 // TabContent describes the content of a tab
 type TabContent struct {
 	Host			string
+	Timestamp	int64
 	Request		string
 	Response	string
 }
@@ -57,15 +58,19 @@ func NewController(module *Repeater, gui *Gui, s *core.Session) *Controller {
 		Sess:				s,
 		Tabs:				make(map[int]*Tab),
 	}
+	tabNum = 1
 	c.Gui.GoClick = c.GoClick
 	c.Gui.NewTabEvent = c.NewTab
 	c.Gui.Load = c.load
 	c.Gui.RemoveTabEvent = c.removeTab
+	c.Gui.GetStuff = c.getReqResp
 	return c
 }
 
 func (c *Controller) removeTab(t *TabGui){
-	log.Printf("remove %d\n", t.id)
+	delete(c.Tabs, t.id)
+	c.Sess.PersistentProject.SaveSettings("repeater", c.Tabs)
+	c.Sess.PersistentProject.DeleteFile(fmt.Sprintf("tab_%d", t.id))
 }
 
 func (c *Controller) load(){
@@ -75,13 +80,16 @@ func (c *Controller) load(){
 		return
 	}
 	for _,t := range c.Tabs{
-		requestDec, err := c.Sess.PersistentProject.FileDecoder2(fmt.Sprintf("tab_%d", t.ID))
+		requestDec, err := c.Sess.PersistentProject.FileDecoder2(fmt.Sprintf("tab_%s", t.Path))
 		if err != nil {
 			// this if is meant to make sure that if there's an entry in the settings file
 			// but no file associated, that tab is removed
 			delete(c.Tabs, t.ID)
 			c.Sess.PersistentProject.SaveSettings("repeater", c.Tabs)
 			continue
+		}
+		if t.ID > tabNum {
+			tabNum = t.ID + 1
 		}
 		// load an encoder for this tab
 		requestsEnc, _ := c.Sess.PersistentProject.FileEncoder2(fmt.Sprintf("tab_%d", t.ID))
@@ -93,10 +101,20 @@ func (c *Controller) load(){
 			}
 			if e.Type == "req"{
 				// I'm reading a request
-				tc := &TabContent{}
-				tc.Host = e.Host
-				tc.Request = string(e.Data)
-				t.history = append(t.history, tc)
+				if e.ID > len(t.history) - 1 {
+					// first time I'm seeing this request
+					tc := &TabContent{}
+					tc.Host = e.Host
+					tc.Request = string(e.Data)
+					tc.Timestamp = e.Timestamp
+					t.history = append(t.history, tc)
+				}else{
+					// second time I'm seeing this request, so overwrite.
+					// this actually shoudn't happen, it's here just because shit happens
+					req := string(e.Data)
+					t.history[e.ID].Request = req
+					t.history[e.ID].Host = e.Host
+				}
 			}else if e.Type == "resp" {
 				// I'm reading a response
 				resp := string(e.Data)
@@ -119,7 +137,7 @@ func (c *Controller) GetModule() core.Module {
 
 func (c *Controller) NewTab(host, request string){
 	t := &Tab{Title: fmt.Sprintf("%d",tabNum), ID: tabNum, Path: fmt.Sprintf("%d",tabNum)}
-	tabContent := &TabContent{ Host: host, Request: request }
+	tabContent := &TabContent{ Host: host, Request: request, Timestamp: time.Now().Unix()}
 	t.history = append(t.history, tabContent)
 	c.Tabs[tabNum] = t
 	tabNum = tabNum + 1
@@ -133,6 +151,17 @@ func (c *Controller) new(t *Tab){
 	rq := t.history[lastItemIndex].Request
 	rp := t.history[lastItemIndex].Response
 	c.Gui.AddNewTab(t.ID, h, rq, rp)
+	for i, _ := range t.history {
+	//for i := len(t.history)-1; i >= 0; i-- {
+		tabContent := t.history[i]
+		timeFormatted := time.Unix(tabContent.Timestamp, 0).Format("2006-01-02 15:04:05")
+		c.Gui.AddToHistory(t.ID, i, fmt.Sprintf("%d. %s", i, timeFormatted ))
+	}
+}
+
+func (c *Controller) getReqResp(idTab, idContent int)(string, string, string){
+	t := c.Tabs[idTab].history[idContent]
+	return t.Host, t.Request, t.Response
 }
 
 
@@ -164,6 +193,10 @@ func (c *Controller) GoClick(id int, host, request string, ch chan string) {
 
 	var tabContent *TabContent
 	tabContent = &TabContent{ Host: host, Request: rRaw }
+
+	timestamp := time.Now().Unix()
+	timeFormatted := time.Unix(timestamp, 0).Format("2006-01-02 15:04:05")
+
 	if t.history[0].Response == "" {
 		// the tab has no history so it's a new thing to save to file
 		// save c.Tabs to file as settings
@@ -176,9 +209,13 @@ func (c *Controller) GoClick(id int, host, request string, ch chan string) {
 	}else{
 		fmt.Println("append")
 		t.history = append(t.history, tabContent)
+		// I'm duplicating this part but whatever
+		entryId := len(t.history) - 1
+		c.Gui.AddToHistory(t.ID, entryId, fmt.Sprintf("%d. %s", entryId, timeFormatted))
 	}
+
 	entryId := len(t.history) - 1
-	e := &Entry{ID: entryId, Type:"req", Host: host, Data: []byte(rRaw)}
+	e := &Entry{ID: entryId, Type:"req", Host: host, Data: []byte(rRaw), Timestamp: timestamp}
 	(*t.encoder).Encode(e)
 
 	c.Sess.Debug(c.Module.Name(), req.Host)
@@ -197,7 +234,6 @@ func (c *Controller) GoClick(id int, host, request string, ch chan string) {
 			respRaw = util.ResponseToString(resp, false)
 			ch <- respRaw
 		}
-		fmt.Printf("history len: %d\n", len(t.history))
 		t.history[i].Response = respRaw
 
 		entry := &Entry{ID: i, Data: []byte(respRaw), Type: "resp" }
