@@ -217,7 +217,6 @@ func (c *Controller) GoClick(id int, host, request string, ch chan string) {
 
 		t.history[0] = tabContent
 	}else{
-		fmt.Println("append")
 		t.history = append(t.history, tabContent)
 		// I'm duplicating this part but whatever
 		entryId := len(t.history) - 1

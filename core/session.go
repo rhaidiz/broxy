@@ -52,7 +52,6 @@ func (s *Session) LoadModule(c ControllerModule) {
 // Exec executes, for a given module m, a function f with parameters a
 func (s *Session) Exec(c string, f string, a ...interface{}) {
 	for _, ctrl := range s.Controllers {
-		println(ctrl.GetModule().Name())
 		if c == ctrl.GetModule().Name() {
 			ctrl.ExecCommand(f, a...)
 		}

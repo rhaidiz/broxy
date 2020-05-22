@@ -88,7 +88,6 @@ func (p *PersistentProject) saveToFile(m,t string, stg interface{}) error {
 	}
 	// write to file
 	fileName := filepath.Join(p.projectPath, fmt.Sprintf("%s%s.json",t,strings.ToLower(m)))
-	fmt.Println(fileName)
 	return ioutil.WriteFile(fileName, b, 0644)
 }
 
