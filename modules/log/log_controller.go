@@ -1,16 +1,19 @@
 package log
 
 import (
+	"fmt"
 	"github.com/rhaidiz/broxy/core"
 	"github.com/rhaidiz/broxy/modules/log/model"
+	"github.com/rhaidiz/broxy/core/project/decoder"
 )
 
 // Controller represents the controller of the log module
 type Controller struct {
 	core.ControllerModule
-	Module *Log
-	Gui    *Gui
-	Sess   *core.Session
+	Module 	*Log
+	Gui    	*Gui
+	Sess   	*core.Session
+	encoder	*decoder.Encoder
 
 	//model     *model.CustomTableModel
 	modelSort *model.SortFilterModel
@@ -28,6 +31,13 @@ func NewController(m *Log, g *Gui, s *core.Session) *Controller {
 	c.modelSort = model.NewSortFilterModel(nil)
 
 	c.Gui.SetTableModel(c.modelSort)
+
+
+	encoder, err := c.Sess.PersistentProject.FileEncoder2("logs")
+	if err != nil{
+		panic(fmt.Sprintf("Error while loading log file\n%s",err))
+	}
+	c.encoder = &encoder
 	go c.logEvent()
 	return c
 }
@@ -49,6 +59,7 @@ func (c *Controller) ExecCommand(m string, args ...interface{}) {
 
 func (c *Controller) logEvent() {
 	for l := range c.Sess.LogEvent {
+		(*c.encoder).Encode(l)
 		c.modelSort.Custom.AddItem(l)
 	}
 }
