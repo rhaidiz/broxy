@@ -48,8 +48,8 @@ func (r *Request) ToString() string {
 	if r == nil {
 		return ""
 	}
-	u1 := fmt.Sprintf("%v", r.URL)
-	ret := fmt.Sprintf("%s %s %s\nHost: %s\n", r.Method, u1[len(r.URL.Scheme)+2:], r.Proto, r.Host)
+	//u1 := fmt.Sprintf("%v", r.URL)
+	ret := fmt.Sprintf("%s %s %s\nHost: %s\n", r.Method, r.URL.Path, r.Proto, r.Host)
 	for k, v := range r.Headers {
 		values := ""
 		for _, s := range v {
