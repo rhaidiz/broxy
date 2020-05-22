@@ -3,11 +3,13 @@ package core
 import (
 	"time"
 	"github.com/rhaidiz/broxy/core/project"
+	"github.com/rhaidiz/broxy/util"
 )
 
 type MainGui interface {
 	AddGuiModule(GuiModule)
 	InitWith(*Session)
+	ShowErrorMessage(string)
 }
 
 // Session represents a running session in Broxy with a GUI and loaded modules
@@ -41,8 +43,10 @@ func NewSession(cfg *BroxySettings, p *project.PersistentProject, gui MainGui) *
 
 // LoadModule loads a module in the current session
 func (s *Session) LoadModule(c ControllerModule) {
-	s.Controllers = append(s.Controllers, c)
-	s.MainGui.AddGuiModule(c.GetGui())
+	if !util.IsNil(c) {
+		s.Controllers = append(s.Controllers, c)
+		s.MainGui.AddGuiModule(c.GetGui())
+	}
 }
 
 // Exec executes, for a given module m, a function f with parameters a
@@ -77,4 +81,8 @@ func (s *Session) Err(mod string, message string) {
 	l := Log{Type: "E", ModuleName: mod, Time: t.Format("2006-01-02 15:04:05"), Message: message}
 	s.Logs = append(s.Logs, l)
 	go func() { s.LogEvent <- l }()
+}
+
+func (s *Session) ShowErrorMessage(message string){
+	s.MainGui.ShowErrorMessage(message)
 }

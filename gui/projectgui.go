@@ -171,6 +171,13 @@ func (g *Projectgui) openProject(b bool) {
 	gui := NewBroxygui(nil,0)
 	s := bcore.NewSession(g.config, c, gui)
 	//Load All modules
+	// defer func() {
+  //       if r := recover(); r != nil {
+	// 				m := fmt.Sprintf("Error while opening project\n%s", r)
+	// 				s.ShowErrorMessage(m)
+	// 				s.Err("coreproxy", m)
+  //       }
+  // }()
 	modules.LoadModules(s)
 
 	gui.Show()

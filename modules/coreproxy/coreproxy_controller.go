@@ -2,10 +2,6 @@ package coreproxy
 
 import (
 	"bytes"
-	"log"
-	//TODO: I don't like to have the encoding/json here, create a generic 
-	// encofing interface instead
-	// "encoding/json"
 	"github.com/rhaidiz/broxy/core/project/decoder"
 	"fmt"
 	"io/ioutil"
@@ -73,20 +69,45 @@ func NewController(proxy *Coreproxy, proxygui *Gui, s *core.Session) *Controller
 		requestsQueue:  0,
 		responsesQueue: 0,
 		dropped:        make(map[int64]bool),
-		filter:         &model.Filter{},		
+		filter:         &model.Filter{},
 	}
 
 	// get the encoders
-	c.requestEnc, _ 		= s.PersistentProject.FileEncoder2("requests")
-	c.requestEditedEnc, _ 	= s.PersistentProject.FileEncoder2("requests_edited")
-	c.responseEnc, _ 		= s.PersistentProject.FileEncoder2("response")
-	c.responseEditedEnc, _ 	= s.PersistentProject.FileEncoder2("response_edited")
+	var err error
+	c.requestEnc, err 		= s.PersistentProject.FileEncoder2("requests")
+	if err != nil {
+		panic("Error while opening history!")
+	}
+	c.requestEditedEnc, err 	= s.PersistentProject.FileEncoder2("requests_edited")
+	if err != nil {
+		panic("Error while opening history!")
+	}
+	c.responseEnc, err 		= s.PersistentProject.FileEncoder2("response")
+	if err != nil {
+		panic("Error while opening history!")
+	}
+	c.responseEditedEnc, err 	= s.PersistentProject.FileEncoder2("response_edited")
+	if err != nil {
+		panic("Error while opening history!")
+	}
 
 	// get the decoders, which I only need to read the history the first time
-	c.requestDec, _ 		= s.PersistentProject.FileDecoder2("requests")
-	c.requestEditedDec, _ 	= s.PersistentProject.FileDecoder2("requests_edited")
-	c.responseDec, _ 		= s.PersistentProject.FileDecoder2("response")
-	c.responseEditedDec, _ 	= s.PersistentProject.FileDecoder2("response_edited")
+	c.requestDec, err 		= s.PersistentProject.FileDecoder2("requests")
+	if err != nil {
+		panic("Error while opening history!")
+	}
+	c.requestEditedDec, err 	= s.PersistentProject.FileDecoder2("requests_edited")
+	if err != nil {
+		panic("Error while opening history!")
+	}
+	c.responseDec, err 		= s.PersistentProject.FileDecoder2("response")
+	if err != nil {
+		panic("Error while opening history!")
+	}
+	c.responseEditedDec, err 	= s.PersistentProject.FileDecoder2("response_edited")
+	if err != nil {
+		panic("Error while opening history!")
+	}
 
 	// load the history
 	count = 1
@@ -134,7 +155,6 @@ func NewController(proxy *Coreproxy, proxygui *Gui, s *core.Session) *Controller
 	}
 
 	//count = int64(len(model.History))
-	log.Printf("count: %d\n", count)
 	// load settings and save settings
 	c.Sess.PersistentProject.LoadSettings("coreproxy", Stg)
 	c.Sess.PersistentProject.SaveSettings("coreproxy", Stg)

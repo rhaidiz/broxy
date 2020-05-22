@@ -75,9 +75,10 @@ func (c *Controller) removeTab(t *TabGui){
 
 func (c *Controller) load(){
 	// load settings
-	e := c.Sess.PersistentProject.LoadSettings("repeater", &c.Tabs)
-	if e != nil {
-		return
+	var err error
+	err = c.Sess.PersistentProject.LoadSettings("repeater", &c.Tabs)
+	if err != nil {
+		panic(fmt.Sprintf("Error while loading the repeater: %s", err))
 	}
 	for _,t := range c.Tabs{
 		requestDec, err := c.Sess.PersistentProject.FileDecoder2(fmt.Sprintf("tab_%s", t.Path))
@@ -85,14 +86,20 @@ func (c *Controller) load(){
 			// this if is meant to make sure that if there's an entry in the settings file
 			// but no file associated, that tab is removed
 			delete(c.Tabs, t.ID)
-			c.Sess.PersistentProject.SaveSettings("repeater", c.Tabs)
+			err = c.Sess.PersistentProject.SaveSettings("repeater", c.Tabs)
+			if err != nil {
+				panic(fmt.Sprintf("Error while loading the repeater: %s", err))
+			}
 			continue
 		}
 		if t.ID > tabNum {
 			tabNum = t.ID + 1
 		}
 		// load an encoder for this tab
-		requestsEnc, _ := c.Sess.PersistentProject.FileEncoder2(fmt.Sprintf("tab_%d", t.ID))
+		requestsEnc, err := c.Sess.PersistentProject.FileEncoder2(fmt.Sprintf("tab_%d", t.ID))
+		if err != nil {
+			panic(fmt.Sprintf("Error while loading the repeater: %s", err))
+		}
 		t.encoder = &requestsEnc
 		for {
 			e := &Entry{}
@@ -202,7 +209,10 @@ func (c *Controller) GoClick(id int, host, request string, ch chan string) {
 		// save c.Tabs to file as settings
 		c.Sess.PersistentProject.SaveSettings("repeater", c.Tabs)
 
-		requestsEnc, _ := c.Sess.PersistentProject.FileEncoder2(fmt.Sprintf("tab_%d", t.ID))
+		requestsEnc, err := c.Sess.PersistentProject.FileEncoder2(fmt.Sprintf("tab_%d", t.ID))
+		if err != nil {
+			panic("Error while saving repeater history")
+		}
 		t.encoder = &requestsEnc
 
 		t.history[0] = tabContent

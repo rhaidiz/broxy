@@ -96,7 +96,8 @@ func (p *PersistentProject) loadFromFile(m,t string, stg interface{}) error {
 	fileName := filepath.Join(p.projectPath, fmt.Sprintf("%s%s.json",t,strings.ToLower(m)))
 	jsonFile, err := os.Open(fileName)
 	if err != nil {
-		return err
+		// file does not exist, create it
+		return p.saveToFile(m,t,stg)
 	}
 	byteValue, _ := ioutil.ReadAll(jsonFile)
 	return json.Unmarshal(byteValue, &stg)

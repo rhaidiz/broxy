@@ -1,7 +1,6 @@
 package repeater
 
 import (
-	"log"
 	"strconv"
 	"github.com/rhaidiz/broxy/core"
 	qtcore "github.com/therecipe/qt/core"
@@ -78,7 +77,6 @@ func (g *Gui) GetModuleGui() interface{}  {
 
 func (g *Gui) handleClose(index int) {
 	tabLabel := g.repeaterTabs.TabText(index)
-	log.Printf("index %d tabLabel %s\n", index, tabLabel)
 	tabId, _ := strconv.Atoi(tabLabel)
 	g.tabRemoved = true
 	g.RemoveTabEvent(g.tabs[tabId])
@@ -98,9 +96,7 @@ func (g *Gui) changedTab(i int) {
 
 // AddNewTab adds a new repeater tab
 func (g *Gui) AddNewTab(id int, host, request, response string) {
-	pos := g.repeaterTabs.Count() - 1
-	tabPosition := g.repeaterTabs.InsertTab(pos, g.NewTab(id, host, request, response), strconv.Itoa(id))
-	log.Printf("add tabPos %d tabId %d\n", tabPosition, id)
+	g.repeaterTabs.InsertTab(g.repeaterTabs.Count()-1, g.NewTab(id, host, request, response), strconv.Itoa(id))
 	g.repeaterTabs.SetCurrentIndex(g.repeaterTabs.Count() - 2)
 }
 
