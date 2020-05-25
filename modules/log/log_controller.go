@@ -32,6 +32,18 @@ func NewController(m *Log, g *Gui, s *core.Session) *Controller {
 
 	c.Gui.SetTableModel(c.modelSort)
 
+	decoder, err := c.Sess.PersistentProject.FileDecoder2("logs")
+	if err != nil {
+		panic(fmt.Sprintf("Error while loading log file\n%s",err))
+	}
+	// load stuff
+	for {
+		l := &core.Log{}
+		if err := decoder.Decode(&l); err != nil {
+			break
+		}
+		c.modelSort.Custom.AddItem(*l)
+	}
 
 	encoder, err := c.Sess.PersistentProject.FileEncoder2("logs")
 	if err != nil{
