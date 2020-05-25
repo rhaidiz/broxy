@@ -178,6 +178,8 @@ func (g *Projectgui) openProject(b bool) {
   }()
 	modules.LoadModules(s)
 
+	g.history.Add(&project.Project{file,dir})
+
 	gui.Show()
 	g.Close()
 }

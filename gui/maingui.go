@@ -90,14 +90,15 @@ func (g *Broxygui) openProjectAction(b bool){
 	gui := NewBroxygui(nil,0)
 	s := bcore.NewSession(g.s.Settings, c, gui)
 	//Load All modules
-	// defer func() {
-  //       if r := recover(); r != nil {
-	// 				m := fmt.Sprintf("Error while opening project:\n%s", r)
-	// 				s.ShowErrorMessage(m)
-  //       }
-  // }()
+	defer func() {
+        if r := recover(); r != nil {
+					m := fmt.Sprintf("Error while opening project:\n%s", r)
+					s.ShowErrorMessage(m)
+        }
+  }()
 	modules.LoadModules(s)
 
+	g.history.Add(&project.Project{file,dir})
 	gui.Show()
 	g.Close()
 }
