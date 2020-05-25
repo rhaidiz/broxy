@@ -107,10 +107,9 @@ func (g *Broxygui) saveProjectAction(b bool){
 	var fileDialog = widgets.NewQFileDialog2(g, "Save as...", "", "")
 	fileDialog.SetAcceptMode(widgets.QFileDialog__AcceptSave)
 	if fileDialog.Exec() != int(widgets.QDialog__Accepted) {
-		println("false")
+		return
 	}
 	var fn = fileDialog.SelectedFiles()[0]
-	println(fn)
 	dir, file := filepath.Split(fn)
 	err := g.s.PersistentProject.Persist(file,dir)
 	if err != nil {

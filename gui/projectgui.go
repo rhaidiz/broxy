@@ -138,7 +138,6 @@ func (g *Projectgui) itemDoubleClicked(item *widgets.QListWidgetItem){
 func (g *Projectgui) newProject(b bool) {
 
 	p := filepath.Join(util.GetTmpDir(), fmt.Sprintf("%d",time.Now().UnixNano()))
-	fmt.Println(p)
 	c, err := project.NewPersistentProject("NewProject",p)
 	if err != nil {
 		g.showErrorMessage(fmt.Sprintf("Error while creating a new project: %s",err))
