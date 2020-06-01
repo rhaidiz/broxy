@@ -34,6 +34,7 @@ type Request struct {
 	Body          []byte
 	Extension     string
 	Params        bool
+	IP						string
 }
 
 // ToString returns a string representation of an HTTP request logged in the history
@@ -119,6 +120,7 @@ const (
 	Edit
 	Status
 	Length
+	Ip
 )
 
 /*func (m *CustomTableModel) row(i *HTTPItem) int {
@@ -177,6 +179,8 @@ func (m *CustomTableModel) headerData(section int, orientation core.Qt__Orientat
 		return core.NewQVariant1("Status")
 	case Length:
 		return core.NewQVariant1("Length")
+	case Ip:
+		return core.NewQVariant1("IP")
 	}
 	return core.NewQVariant()
 }
@@ -277,7 +281,7 @@ func (m *CustomTableModel) rowCount(*core.QModelIndex) int {
 }
 
 func (m *CustomTableModel) columnCount(*core.QModelIndex) int {
-	return 8
+	return 9
 }
 func (m *CustomTableModel) data(index *core.QModelIndex, role int) *core.QVariant {
 	if role == int(core.Qt__TextAlignmentRole) &&
@@ -296,7 +300,7 @@ func (m *CustomTableModel) data(index *core.QModelIndex, role int) *core.QVarian
 	case ID:
 		return core.NewQVariant1(item.ID)
 	case Host:
-		return core.NewQVariant1(item.Req.Host)
+		return core.NewQVariant1(fmt.Sprintf("%s://%s",item.Req.URL.Scheme, item.Req.Host))
 	case Method:
 		return core.NewQVariant1(item.Req.Method)
 	case Path:
@@ -319,6 +323,8 @@ func (m *CustomTableModel) data(index *core.QModelIndex, role int) *core.QVarian
 		if item.Resp != nil {
 			return core.NewQVariant1(fmt.Sprintf("%d", item.Resp.ContentLength))
 		}
+	case Ip:
+		return core.NewQVariant1(item.Req.IP)
 	}
 	return core.NewQVariant()
 }

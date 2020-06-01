@@ -5,6 +5,7 @@ import (
 	"github.com/rhaidiz/broxy/core/project/decoder"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -417,6 +418,8 @@ func (c *Controller) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Respo
 
 // Executed when a request arrives
 func (c *Controller) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+
+
 	var resp *http.Response
 	var bodyBytes []byte
 	if r != nil {
@@ -438,6 +441,12 @@ func (c *Controller) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Reques
 	if len(r.URL.RawQuery) > 0 || len(bodyBytes) > 0 {
 		params = true
 	}
+	ips, err := net.LookupHost(r.Host)
+	var ip string
+	if err == nil {
+		ip = "Unknown host"
+	}
+	ip = ips[0]
 	// this is the original request, save it for the history
 	httpItem.Req = &model.Request{
 		ID:			   count + ctx.Session,
@@ -450,6 +459,7 @@ func (c *Controller) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Reques
 		Proto:         r.Proto,
 		Extension:     ext,
 		Params:        params,
+		IP:						 ip,
 	}
 
 	go func(){ c.requestEnc.Encode(httpItem.Req) }()
