@@ -2,7 +2,7 @@ package gui
 
 import (
 	"fmt"
-	_ "os"
+	"os"
 	bcore "github.com/rhaidiz/broxy/core"
 	"github.com/rhaidiz/broxy/modules"
 	"github.com/rhaidiz/broxy/util"
@@ -110,8 +110,12 @@ func (g *Projectgui) customContextMenuRequested(p *core.QPoint) {
 		remove := g.contextMenu.AddAction("Remove")
 		remove.ConnectTriggered(func(b bool) {
 			r := g.projectsListWidget.CurrentRow()
-			g.history.Remove(g.history.H[r])
+			project := g.history.H[r]
+			g.history.Remove(project)
 			g.projectsListWidget.TakeItem(r)
+			// remove from file-system
+			path := filepath.Join(project.Path, project.Title)
+			os.RemoveAll(path)
 		})
 	}
 	g.contextMenu.Exec2(g.projectsListWidget.MapToGlobal(p), nil)
