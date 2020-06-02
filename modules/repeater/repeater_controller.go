@@ -64,13 +64,14 @@ func NewController(module *Repeater, gui *Gui, s *core.Session) *Controller {
 	c.Gui.Load = c.load
 	c.Gui.RemoveTabEvent = c.removeTab
 	c.Gui.GetStuff = c.getReqResp
+	c.Gui.ChangeTabName = c.changeTabName
 	return c
 }
 
-func (c *Controller) removeTab(t *TabGui){
-	delete(c.Tabs, t.id)
+func (c *Controller) removeTab(id int){
+	delete(c.Tabs, id)
 	c.Sess.PersistentProject.SaveSettings("repeater", c.Tabs)
-	c.Sess.PersistentProject.DeleteFile(fmt.Sprintf("tab_%d", t.id))
+	c.Sess.PersistentProject.DeleteFile(fmt.Sprintf("tab_%d", id))
 }
 
 func (c *Controller) load(){
@@ -96,7 +97,7 @@ func (c *Controller) load(){
 			tabNum = t.ID + 1
 		}
 		// load an encoder for this tab
-		requestsEnc, err := c.Sess.PersistentProject.FileEncoder2(fmt.Sprintf("tab_%d", t.ID))
+		requestsEnc, err := c.Sess.PersistentProject.FileEncoder2(fmt.Sprintf("tab_%s", t.Path))
 		if err != nil {
 			panic(fmt.Sprintf("Error while loading the repeater: %s", err))
 		}
@@ -153,17 +154,23 @@ func (c *Controller) NewTab(host, request string){
 
 // this method creates a new GUI tab based on a Tab struct
 func (c *Controller) new(t *Tab){
-	lastItemIndex := len(t.history) - 1
-	h := t.history[lastItemIndex].Host
-	rq := t.history[lastItemIndex].Request
-	rp := t.history[lastItemIndex].Response
-	c.Gui.AddNewTab(t.ID, h, rq, rp)
-	for i, _ := range t.history {
-	//for i := len(t.history)-1; i >= 0; i-- {
-		tabContent := t.history[i]
-		timeFormatted := time.Unix(tabContent.Timestamp, 0).Format("2006-01-02 15:04:05")
-		c.Gui.AddToHistory(t.ID, i, fmt.Sprintf("%d. %s", i, timeFormatted ))
+
+	if len(t.history) == 0 {
+		t.history = append(t.history, &TabContent{})
 	}
+
+	lastItemIndex := len(t.history) - 1
+		h := t.history[lastItemIndex].Host
+		rq := t.history[lastItemIndex].Request
+		rp := t.history[lastItemIndex].Response
+
+		c.Gui.AddNewTab(t.Title, t.ID, h, rq, rp)
+		for i, _ := range t.history {
+		//for i := len(t.history)-1; i >= 0; i-- {
+			tabContent := t.history[i]
+			timeFormatted := time.Unix(tabContent.Timestamp, 0).Format("2006-01-02 15:04:05")
+			c.Gui.AddToHistory(t.ID, i, fmt.Sprintf("%d. %s", i, timeFormatted ))
+		}
 }
 
 func (c *Controller) getReqResp(idTab, idContent int)(string, string, string){
@@ -180,6 +187,11 @@ func (c *Controller) ExecCommand(m string, args ...interface{}) {
 		c.NewTab(fmt.Sprintf("%s://%s", r.URL.Scheme, r.Host), fmt.Sprintf("%s\n", r.ToString()))
 
 	}
+}
+
+func (c *Controller) changeTabName(id int,s string){
+	c.Tabs[id].Title = s
+	c.Sess.PersistentProject.SaveSettings("repeater", c.Tabs)
 }
 
 // GoClick is the event fired when clicking the Go button in a repeater tab

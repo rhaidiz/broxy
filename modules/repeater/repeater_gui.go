@@ -2,6 +2,7 @@ package repeater
 
 import (
 	"strconv"
+	"fmt"
 	"github.com/rhaidiz/broxy/core"
 	qtcore "github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
@@ -22,8 +23,9 @@ type Gui struct {
 
 	//GoClick func(*TabGui)
 	GoClick func(int, string, string, chan string)
+	ChangeTabName func(int, string)
 	NewTabEvent func(string, string)
-	RemoveTabEvent func(*TabGui)
+	RemoveTabEvent func(int)
 	Load func()
 	GetStuff func(int, int)(string, string, string)
 	_       func(i int) `signal:"changedTab"`
@@ -36,7 +38,9 @@ type TabGui struct {
 	cancelBtn      *widgets.QPushButton
 	historyPrev		 *widgets.QPushButton
 	historyNext		 *widgets.QPushButton
+	changeTabName	 *widgets.QPushButton
 	HostLine       *widgets.QLineEdit
+	TabLine	       *widgets.QLineEdit
 	RequestEditor  *widgets.QPlainTextEdit
 	ResponseEditor *widgets.QPlainTextEdit
 	ComboHistory	 *widgets.QComboBox
@@ -76,11 +80,15 @@ func (g *Gui) GetModuleGui() interface{}  {
 }
 
 func (g *Gui) handleClose(index int) {
-	tabLabel := g.repeaterTabs.TabText(index)
-	tabId, _ := strconv.Atoi(tabLabel)
+	w := g.repeaterTabs.Widget(index)
+	idLabel := widgets.NewQLabelFromPointer(w.FindChild("mylabel", qtcore.Qt__FindChildrenRecursively).Pointer())
+	id, _ := strconv.Atoi(idLabel.Text())
+
+	delete(g.tabs, id)
 	g.tabRemoved = true
-	g.RemoveTabEvent(g.tabs[tabId])
+	g.RemoveTabEvent(id)
 	g.repeaterTabs.RemoveTab(index)
+
 }
 
 func (g *Gui) changedTab(i int) {
@@ -95,20 +103,45 @@ func (g *Gui) changedTab(i int) {
 }
 
 // AddNewTab adds a new repeater tab
-func (g *Gui) AddNewTab(id int, host, request, response string) {
-	g.repeaterTabs.InsertTab(g.repeaterTabs.Count()-1, g.NewTab(id, host, request, response), strconv.Itoa(id))
+func (g *Gui) AddNewTab(title string, id int, host, request, response string) {
+	g.repeaterTabs.InsertTab(g.repeaterTabs.Count()-1, g.NewTab(title, id, host, request, response), title)
 	g.repeaterTabs.SetCurrentIndex(g.repeaterTabs.Count() - 2)
 }
 
 // NewTab adds a new tab
-func (g *Gui) NewTab(id int, host, request, response string) widgets.QWidget_ITF {
+func (g *Gui) NewTab(title string, id int, host, request, response string) widgets.QWidget_ITF {
 	t := &TabGui{id: id}
 	g.tabs[id] = t
-	//g.tabs = append(g.tabs, t)
+
+	var label = widgets.NewQLabel(nil, 0)
+	label.SetText(fmt.Sprintf("%d", id))
+	label.SetObjectName("mylabel")
+	label.SetVisible(false)
+
 	mainWidget := widgets.NewQWidget(nil, 0)
 	vlayout := widgets.NewQVBoxLayout()
 	vlayout.SetContentsMargins(11, 11, 11, 11)
+
+	vlayout.AddWidget(label, 0, 0)
 	mainWidget.SetLayout(vlayout)
+
+	hlayout_tab_name := widgets.NewQHBoxLayout()
+
+	t.changeTabName = widgets.NewQPushButton2("Change", nil)
+	t.changeTabName.ConnectClicked(func(b bool) {
+		newTabName := t.TabLine.Text()
+		// delete(g.tabs, tabLabel)
+		// g.tabs[newTabName] = t
+		g.repeaterTabs.SetTabText(g.repeaterTabs.CurrentIndex(), newTabName)
+		g.ChangeTabName(id, newTabName)
+	} )
+
+	t.TabLine = widgets.NewQLineEdit(nil)
+
+	hlayout_tab_name.AddWidget(t.changeTabName, 0, 0)
+	hlayout_tab_name.AddWidget(t.TabLine, 0, 0)
+
+	vlayout.AddLayout(hlayout_tab_name, 0)
 
 	hlayout := widgets.NewQHBoxLayout()
 
@@ -137,12 +170,12 @@ func (g *Gui) NewTab(id int, host, request, response string) widgets.QWidget_ITF
 	})
 	t.ComboHistory.ConnectCurrentIndexChanged(func(i int){
 		if len(t.history) > 0 {
-		id := t.history[i].id
-		host, req, resp := g.GetStuff(t.id, id)
-		t.HostLine.SetText(host)
-		t.RequestEditor.SetPlainText(req)
-		t.ResponseEditor.SetPlainText(resp)
-	}
+			id := t.history[i].id
+			host, req, resp := g.GetStuff(t.id, id)
+			t.HostLine.SetText(host)
+			t.RequestEditor.SetPlainText(req)
+			t.ResponseEditor.SetPlainText(resp)
+		}
 	})
 
 	t.historyPrev = widgets.NewQPushButton2("<", nil)
@@ -183,8 +216,8 @@ func (g *Gui) NewTab(id int, host, request, response string) widgets.QWidget_ITF
 	return mainWidget
 }
 
-func (g *Gui) AddToHistory(idTab int, idTabContent int, label string) {
-	t := g.tabs[idTab]
+func (g *Gui) AddToHistory(tabId int, idTabContent int, label string) {
+	t := g.tabs[tabId]
 	t.ComboHistory.AddItem(label, qtcore.NewQVariant())
 	h := &tabHistory{ id: idTabContent }
 	t.history = append(t.history, h)
