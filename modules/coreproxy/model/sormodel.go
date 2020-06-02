@@ -61,15 +61,33 @@ func (m *SortFilterModel) filterAcceptsRow(sourceRow int, sourceParent *core.QMo
 		return true
 	}
 
+	// scope
+	scopeCheck := false
+	for _, k := range m.filter.Scope{
+		if k != "" && req.Host == k {
+			scopeCheck = true
+			break
+		}
+	}
+	if !scopeCheck {
+		return false
+	}
+
 	// extension
+	showOnlyCheck := false
 	if m.filter.Show {
 		// show only this stuff
 		for _, k := range m.filter.ShowExt{
-			if req.Extension != k {
-				return false
+			if req.Extension == k {
+				showOnlyCheck = true
+				break
 			}
 		}
+		if !showOnlyCheck {
+			return false
+		}
 	}
+
 	if m.filter.Hide {
 		// hide this stuff
 		for _, k := range m.filter.HideExt{

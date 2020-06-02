@@ -286,6 +286,9 @@ func (c *Controller) setFilter(f *model.Filter){
 	hideExt := strings.Join(f.HideExt, ", ")
 	c.Gui.HideExtensionLineEdit.SetText(hideExt)
 
+	scope := strings.Join(f.Scope, ", ")
+	c.Gui.ScopeLineEdit.SetText(scope)
+
 	c.applyFilter(true)
 }
 
@@ -342,6 +345,17 @@ func (c *Controller) applyFilter(b bool) {
 		}
 	}
 	c.Filter.HideExt = hideExt
+
+	// scope
+	var scope []string
+	if c.Gui.HideOnlyCheckBox.IsChecked() {
+		for _, e := range strings.Split(strings.Replace(c.Gui.ScopeLineEdit.DisplayText(), " ", "", -1), ",") {
+			//c.Filter.HideExt[e] = true
+			scope = append(scope, e)
+		}
+	}
+	c.Filter.Scope = scope
+
 	c.model.SetFilter(c.Filter)
 	c.Sess.PersistentProject.SaveSettings("filters", c.Filter)
 }

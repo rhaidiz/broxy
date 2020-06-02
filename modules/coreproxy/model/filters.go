@@ -8,15 +8,16 @@ type Filter struct {
 	Hide			 bool
 	ShowExt    []string
 	HideExt    []string
+	Scope			 []string
 }
 
 
 var DefaultFilter = & Filter{
-	Search 			: "Test",
+	Search 			: "",
 	StatusCode	: []int{100, 200, 300, 400, 500},
 	Show				: false,
 	Hide				: true,
 	HideExt 		: []string{"jpg", "png"},
 	ShowExt 		: []string{"asp","php"},
-
+	Scope				: []string{},
 }

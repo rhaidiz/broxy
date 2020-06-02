@@ -54,6 +54,7 @@ type Gui struct {
 
 	// Filter
 	TextSearchLineEdit    *widgets.QLineEdit
+	ScopeLineEdit					*widgets.QLineEdit
 	ApplyFiltersButton    *widgets.QPushButton
 	ResetFiltersButton    *widgets.QPushButton
 	S100CheckBox          *widgets.QCheckBox
@@ -160,6 +161,24 @@ func (g *Gui) filtersTabGui() widgets.QWidget_ITF {
 	g.TextSearchLineEdit.SetBaseSize(qtcore.NewQSize2(0, 0))
 	g.TextSearchLineEdit.SetText("")
 	vlayout1.AddWidget(g.TextSearchLineEdit, 0, qtcore.Qt__AlignLeft)
+
+	labelScope := widgets.NewQLabel(nil, 0)
+	fontScope := gui.NewQFont()
+	fontScope.SetPointSize(20)
+	fontScope.SetBold(true)
+	fontScope.SetWeight(75)
+	labelScope.SetFont(fontScope)
+	labelScope.SetText("Scope")
+	vlayout1.AddWidget(labelScope, 0, qtcore.Qt__AlignLeft)
+
+	// Scope
+	g.ScopeLineEdit = widgets.NewQLineEdit(nil)
+	g.ScopeLineEdit.SetMinimumSize(qtcore.NewQSize2(150, 0))
+	g.ScopeLineEdit.SetMaximumSize(qtcore.NewQSize2(150, 16777215))
+	g.ScopeLineEdit.SetBaseSize(qtcore.NewQSize2(0, 0))
+	g.ScopeLineEdit.SetText("")
+	vlayout1.AddWidget(g.ScopeLineEdit, 0, qtcore.Qt__AlignLeft)
+
 
 	// Status
 	label3 := widgets.NewQLabel(nil, 0)
