@@ -1,6 +1,7 @@
 package coreproxy
 
 import (
+	"log"
 	"bytes"
 	"github.com/rhaidiz/broxy/core/project/decoder"
 	"fmt"
@@ -306,7 +307,8 @@ func (c *Controller) resetFilter(b bool) {
 
 func (c *Controller) selectRow(r int) {
 	c.Gui.HideAllTabs()
-	req, editedReq, resp, editedResp := c.model.Custom.GetReqResp(c.model.GetRowId(r))
+	rowId := c.model.GetRowId(r)
+	req, editedReq, resp, editedResp := c.model.Custom.GetReqResp(rowId)
 	if req != nil {
 		c.Gui.ShowReqTab(req.ToString())
 	}

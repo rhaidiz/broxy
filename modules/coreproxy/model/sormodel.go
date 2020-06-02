@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strconv"
 	"strings"
 	"github.com/therecipe/qt/core"
 )
@@ -45,10 +46,16 @@ func (m *SortFilterModel) ResetFilters() {
 }
 
 func (m *SortFilterModel) filterAcceptsRow(sourceRow int, sourceParent *core.QModelIndex) bool {
+
 	if m.filter == nil {
 		return true
 	}
-	req, editedReq, resp, editedResp := m.Custom.GetReqResp(m.GetRowId(sourceRow))
+
+	index := m.SourceModel().Index(sourceRow, 0, sourceParent)
+	idStr := m.SourceModel().Data(index, 0).ToString()
+	id, _ := strconv.Atoi(idStr)
+
+	req, editedReq, resp, editedResp := m.Custom.GetReqResp(int64(id))
 
 	if req == nil {
 		return true
@@ -92,6 +99,7 @@ func (m *SortFilterModel) filterAcceptsRow(sourceRow int, sourceParent *core.QMo
 	}
 
 	return true
+
 }
 
 func (m *SortFilterModel) sortTableView(column string, order core.Qt__SortOrder) {
