@@ -62,10 +62,23 @@ func (m *SortFilterModel) filterAcceptsRow(sourceRow int, sourceParent *core.QMo
 	}
 
 	// extension
-	if (len(m.filter.HideExt) > 0 && m.filter.HideExt[req.Extension] == true) ||
-		(len(m.filter.ShowExt) > 0 && m.filter.ShowExt[req.Extension] == false) {
-		return false
+	if m.filter.Show {
+		// show only this stuff
+		for _, k := range m.filter.ShowExt{
+			if req.Extension != k {
+				return false
+			}
+		}
 	}
+	if m.filter.Hide {
+		// hide this stuff
+		for _, k := range m.filter.HideExt{
+			if req.Extension == k {
+				return false
+			}
+		}
+	}
+
 
 	// response status
 	next := false //IMP: make me pretier

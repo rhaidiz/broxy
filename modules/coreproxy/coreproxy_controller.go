@@ -1,7 +1,6 @@
 package coreproxy
 
 import (
-	"log"
 	"bytes"
 	"github.com/rhaidiz/broxy/core/project/decoder"
 	"fmt"
@@ -26,7 +25,7 @@ type Controller struct {
 	Module *Coreproxy
 	Gui    *Gui
 	Sess   *core.Session
-	filter *model.Filter
+	Filter *model.Filter
 
 	isRunning   bool
 	model       *model.SortFilterModel
@@ -71,7 +70,7 @@ func NewController(proxy *Coreproxy, proxygui *Gui, s *core.Session) *Controller
 		requestsQueue:  0,
 		responsesQueue: 0,
 		dropped:        make(map[int64]bool),
-		filter:         &model.Filter{},
+		Filter:         model.DefaultFilter,
 	}
 
 	// get the encoders
@@ -161,6 +160,8 @@ func NewController(proxy *Coreproxy, proxygui *Gui, s *core.Session) *Controller
 	c.Sess.PersistentProject.LoadSettings("coreproxy", Stg)
 	c.Sess.PersistentProject.SaveSettings("coreproxy", Stg)
 
+	c.Sess.PersistentProject.LoadSettings("filters", c.Filter)
+	c.Sess.PersistentProject.SaveSettings("filters", c.Filter)
 
 
 	c.model = model.NewSortFilterModel(nil)
@@ -170,7 +171,7 @@ func NewController(proxy *Coreproxy, proxygui *Gui, s *core.Session) *Controller
 	c.Module.OnResp = c.onResp
 	c.Module.Proxyh.OnRequest().HandleConnect(goproxy.FuncHttpsHandler(c.broxyConnectHandle))
 	c.Gui.SetTableModel(c.model)
-	
+
 	// UI events
 	c.Gui.RowClicked = c.selectRow
 	c.Gui.Forward = c.forward
@@ -208,7 +209,8 @@ func (c *Controller) ExecCommand(m string, args ...interface{}) {
 }
 
 func (c *Controller) initUIContent() {
-	c.setDefaultFilter()
+	//c.setDefaultFilter()
+	c.setFilter(c.Filter)
 	c.Gui.ListenerLineEdit.SetText(fmt.Sprintf("%s:%d", Stg.IP, Stg.Port))
 	if Stg.Interceptor {
 		c.Gui.InterceptorToggleButton.SetChecked(true)
@@ -250,6 +252,43 @@ func (c *Controller) checkRespInterception(b bool) {
 	c.saveSettings()
 }
 
+func (c *Controller) setFilter(f *model.Filter){
+	c.Gui.TextSearchLineEdit.SetText(f.Search)
+	for _, s := range f.StatusCode {
+		switch s {
+		case 100:
+			c.Gui.S100CheckBox.SetChecked(true)
+			break
+		case 200:
+			c.Gui.S200CheckBox.SetChecked(true)
+			break
+		case 300:
+			c.Gui.S300CheckBox.SetChecked(true)
+			break
+		case 400:
+			c.Gui.S400CheckBox.SetChecked(true)
+			break
+		case 500:
+			c.Gui.S500CheckBox.SetChecked(true)
+			break
+		}
+	}
+	if f.Show {
+		c.Gui.ShowOnlyCheckBox.SetChecked(true)
+	}
+	if f.Hide {
+		c.Gui.HideOnlyCheckBox.SetChecked(true)
+	}
+
+	showExt := strings.Join(f.ShowExt, ", ")
+	c.Gui.ShowExtensionLineEdit.SetText(showExt)
+
+	hideExt := strings.Join(f.HideExt, ", ")
+	c.Gui.HideExtensionLineEdit.SetText(hideExt)
+
+	c.applyFilter(true)
+}
+
 // Defaut history filters
 func (c *Controller) setDefaultFilter() {
 	c.Gui.TextSearchLineEdit.SetText("")
@@ -266,7 +305,7 @@ func (c *Controller) setDefaultFilter() {
 }
 
 func (c *Controller) applyFilter(b bool) {
-	c.filter.Search = c.Gui.TextSearchLineEdit.DisplayText()
+	c.Filter.Search = c.Gui.TextSearchLineEdit.DisplayText()
 	var status []int
 	if c.Gui.S100CheckBox.IsChecked() {
 		status = append(status, 100)
@@ -285,20 +324,26 @@ func (c *Controller) applyFilter(b bool) {
 	}
 	// this also looks bad, creating a new status each time and replacing it ... bleah ...
 	//IMP: make me pretier
-	c.filter.StatusCode = status
-	c.filter.ShowExt = make(map[string]bool)
+	c.Filter.StatusCode = status
+	var showExt []string
 	if c.Gui.ShowOnlyCheckBox.IsChecked() {
 		for _, e := range strings.Split(strings.Replace(c.Gui.ShowExtensionLineEdit.DisplayText(), " ", "", -1), ",") {
-			c.filter.ShowExt[e] = true
+			//c.Filter.ShowExt[e] = true
+			showExt = append(showExt, e)
 		}
 	}
-	c.filter.HideExt = make(map[string]bool)
+	c.Filter.ShowExt = showExt
+	//c.Filter.HideExt = make(map[string]bool)
+	var hideExt []string
 	if c.Gui.HideOnlyCheckBox.IsChecked() {
 		for _, e := range strings.Split(strings.Replace(c.Gui.HideExtensionLineEdit.DisplayText(), " ", "", -1), ",") {
-			c.filter.HideExt[e] = true
+			//c.Filter.HideExt[e] = true
+			hideExt = append(hideExt, e)
 		}
 	}
-	c.model.SetFilter(c.filter)
+	c.Filter.HideExt = hideExt
+	c.model.SetFilter(c.Filter)
+	c.Sess.PersistentProject.SaveSettings("filters", c.Filter)
 }
 
 func (c *Controller) resetFilter(b bool) {

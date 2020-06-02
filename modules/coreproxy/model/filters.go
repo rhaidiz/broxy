@@ -4,6 +4,19 @@ package model
 type Filter struct {
 	Search     string
 	StatusCode []int
-	ShowExt    map[string]bool
-	HideExt    map[string]bool
+	Show			 bool
+	Hide			 bool
+	ShowExt    []string
+	HideExt    []string
+}
+
+
+var DefaultFilter = & Filter{
+	Search 			: "Test",
+	StatusCode	: []int{100, 200, 300, 400, 500},
+	Show				: false,
+	Hide				: true,
+	HideExt 		: []string{"jpg", "png"},
+	ShowExt 		: []string{"asp","php"},
+
 }
