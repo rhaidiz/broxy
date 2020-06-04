@@ -18,6 +18,7 @@ const (
 	CopyBaseURLLabel  = "Copy base URL"
 	RepeatLabel       = "Repeat"
 	ClearHistoryLabel = "Clear History"
+	AddToScopeLabel 	= "Add Host to Scope"
 )
 
 // Gui represents the GUI of the main intercept proxy
@@ -26,7 +27,7 @@ type Gui struct {
 
 	Sess *core.Session
 
-	rightClickLabels      [4]string
+	rightClickLabels      []string
 	ControllerInit        func()
 	StartProxy            func(bool)
 	StopProxy             func()
@@ -54,6 +55,7 @@ type Gui struct {
 
 	// Filter
 	TextSearchLineEdit    *widgets.QLineEdit
+	ShowScopeOnlyCheckBox *widgets.QCheckBox
 	ScopeLineEdit					*widgets.QLineEdit
 	ApplyFiltersButton    *widgets.QPushButton
 	ResetFiltersButton    *widgets.QPushButton
@@ -97,7 +99,7 @@ func NewGui(s *core.Session) *Gui {
 		Sess:             s,
 		historyTableView: widgets.NewQTableView(nil),
 		view:             quick.NewQQuickView(nil),
-		rightClickLabels: [4]string{CopyURLLabel, CopyBaseURLLabel, RepeatLabel, ClearHistoryLabel},
+		rightClickLabels: []string{CopyURLLabel, CopyBaseURLLabel, RepeatLabel, ClearHistoryLabel, AddToScopeLabel},
 	}
 }
 
@@ -137,7 +139,7 @@ func (g *Gui) interceptorTabGui() widgets.QWidget_ITF {
 func (g *Gui) filtersTabGui() widgets.QWidget_ITF {
 	scrollArea := widgets.NewQScrollArea(nil)
 	scrollArea.SetWidgetResizable(true)
-	scrollArea.SetGeometry2(10, 10, 200, 200)
+	//scrollArea.SetGeometry2(10, 10, 400, 400)
 	scrollAreaWidget := widgets.NewQWidget(nil, 0)
 	vlayout1 := widgets.NewQVBoxLayout()
 	scrollAreaWidget.SetLayout(vlayout1)
@@ -154,10 +156,11 @@ func (g *Gui) filtersTabGui() widgets.QWidget_ITF {
 	label2.SetFont(font2)
 	label2.SetText("Text search")
 	vlayout1.AddWidget(label2, 0, qtcore.Qt__AlignLeft)
+	//scrollAreaWidget.SetStyleSheet("background-color: red")
 
 	g.TextSearchLineEdit = widgets.NewQLineEdit(nil)
-	g.TextSearchLineEdit.SetMinimumSize(qtcore.NewQSize2(150, 0))
-	g.TextSearchLineEdit.SetMaximumSize(qtcore.NewQSize2(150, 16777215))
+	g.TextSearchLineEdit.SetMinimumSize(qtcore.NewQSize2(450, 0))
+	//g.TextSearchLineEdit.SetMaximumSize(qtcore.NewQSize2(450, 16777215))
 	g.TextSearchLineEdit.SetBaseSize(qtcore.NewQSize2(0, 0))
 	g.TextSearchLineEdit.SetText("")
 	vlayout1.AddWidget(g.TextSearchLineEdit, 0, qtcore.Qt__AlignLeft)
@@ -173,12 +176,15 @@ func (g *Gui) filtersTabGui() widgets.QWidget_ITF {
 
 	// Scope
 	g.ScopeLineEdit = widgets.NewQLineEdit(nil)
-	g.ScopeLineEdit.SetMinimumSize(qtcore.NewQSize2(150, 0))
-	g.ScopeLineEdit.SetMaximumSize(qtcore.NewQSize2(150, 16777215))
-	g.ScopeLineEdit.SetBaseSize(qtcore.NewQSize2(0, 0))
+	//g.ScopeLineEdit.SetMinimumSize(qtcore.NewQSize2(150, 0))
+	g.ScopeLineEdit.SetMinimumSize(qtcore.NewQSize2(450, 16777215))
+	//g.ScopeLineEdit.SetBaseSize(qtcore.NewQSize2(0, 0))
 	g.ScopeLineEdit.SetText("")
 	vlayout1.AddWidget(g.ScopeLineEdit, 0, qtcore.Qt__AlignLeft)
 
+	g.ShowScopeOnlyCheckBox = widgets.NewQCheckBox(nil)
+	g.ShowScopeOnlyCheckBox.SetText("Show Scope Only")
+	vlayout1.AddWidget(g.ShowScopeOnlyCheckBox, 0, qtcore.Qt__AlignLeft)
 
 	// Status
 	label3 := widgets.NewQLabel(nil, 0)
@@ -241,10 +247,11 @@ func (g *Gui) filtersTabGui() widgets.QWidget_ITF {
 	g.HideOnlyCheckBox.SetText("Hide")
 
 	gridLayout.AddWidget(g.ShowExtensionLineEdit)
-	gridLayout.AddWidget(g.HideExtensionLineEdit)
-
 	gridLayout.AddWidget(g.ShowOnlyCheckBox)
+
+	gridLayout.AddWidget(g.HideExtensionLineEdit)
 	gridLayout.AddWidget(g.HideOnlyCheckBox)
+
 
 	spacerItem := widgets.NewQSpacerItem(400, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
 	gridLayout.AddItem(spacerItem, 0, 2, 1, 1, qtcore.Qt__AlignRight)
@@ -433,6 +440,13 @@ func (g *Gui) customContextMenuRequested(p *qtcore.QPoint) {
 		clearHistoryAction.ConnectTriggered(func(b bool) {
 			if len(g.historyTableView.SelectedIndexes()) > 0 {
 				g.RightItemClicked(ClearHistoryLabel, g.historyTableView.SelectedIndexes()[0].Row())
+			}
+		})
+
+		addToScopeAction := g.contextMenu.AddAction(AddToScopeLabel)
+		addToScopeAction.ConnectTriggered(func(b bool) {
+			if len(g.historyTableView.SelectedIndexes()) > 0 {
+				g.RightItemClicked(AddToScopeLabel, g.historyTableView.SelectedIndexes()[0].Row())
 			}
 		})
 

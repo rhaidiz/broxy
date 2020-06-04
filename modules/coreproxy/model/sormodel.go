@@ -61,16 +61,18 @@ func (m *SortFilterModel) filterAcceptsRow(sourceRow int, sourceParent *core.QMo
 		return true
 	}
 
-	// scope
 	scopeCheck := false
-	for _, k := range m.filter.Scope{
-		if k != "" && req.Host == k {
-			scopeCheck = true
-			break
+	// scope
+	if len(m.filter.Scope) > 0 && m.filter.ScopeOnly {
+		for _, k := range m.filter.Scope{
+			if req.Host == k {
+				scopeCheck = true
+				break
+			}
 		}
-	}
-	if !scopeCheck {
-		return false
+		if !scopeCheck {
+			return false
+		}
 	}
 
 	// extension

@@ -225,6 +225,7 @@ func (c *Controller) initUIContent() {
 
 func (c *Controller) rightItemClicked(s string, r int) {
 	req, _, _, _ := c.model.Custom.GetReqResp(c.model.GetRowId(r))
+	// shouldn't this be a switch?
 	if s == CopyURLLabel {
 		clipboard.WriteAll(fmt.Sprintf("%s://%s%s", req.URL.Scheme, req.Host, req.URL.Path))
 	} else if s == CopyBaseURLLabel {
@@ -235,6 +236,9 @@ func (c *Controller) rightItemClicked(s string, r int) {
 	} else if s == ClearHistoryLabel {
 		c.model.Custom.ClearHistory()
 		c.id = 0
+	} else if s == AddToScopeLabel {
+		c.Filter.Scope = append(c.Filter.Scope, req.Host)
+		c.setFilter(c.Filter)
 	}
 }
 
@@ -278,6 +282,9 @@ func (c *Controller) setFilter(f *model.Filter){
 	}
 	if f.Hide {
 		c.Gui.HideOnlyCheckBox.SetChecked(true)
+	}
+	if f.ScopeOnly {
+		c.Gui.ShowScopeOnlyCheckBox.SetChecked(true)
 	}
 
 	showExt := strings.Join(f.ShowExt, ", ")
@@ -329,8 +336,9 @@ func (c *Controller) applyFilter(b bool) {
 	//IMP: make me pretier
 	c.Filter.StatusCode = status
 	var showExt []string
-	if c.Gui.ShowOnlyCheckBox.IsChecked() {
-		for _, e := range strings.Split(strings.Replace(c.Gui.ShowExtensionLineEdit.DisplayText(), " ", "", -1), ",") {
+	c.Filter.Show = c.Gui.ShowOnlyCheckBox.IsChecked()
+	for _, e := range strings.Split(strings.Replace(c.Gui.ShowExtensionLineEdit.DisplayText(), " ", "", -1), ",") {
+		if len(e) > 0 {
 			//c.Filter.ShowExt[e] = true
 			showExt = append(showExt, e)
 		}
@@ -338,8 +346,9 @@ func (c *Controller) applyFilter(b bool) {
 	c.Filter.ShowExt = showExt
 	//c.Filter.HideExt = make(map[string]bool)
 	var hideExt []string
-	if c.Gui.HideOnlyCheckBox.IsChecked() {
-		for _, e := range strings.Split(strings.Replace(c.Gui.HideExtensionLineEdit.DisplayText(), " ", "", -1), ",") {
+	c.Filter.Hide = c.Gui.HideOnlyCheckBox.IsChecked()
+	for _, e := range strings.Split(strings.Replace(c.Gui.HideExtensionLineEdit.DisplayText(), " ", "", -1), ",") {
+		if len(e) > 0{
 			//c.Filter.HideExt[e] = true
 			hideExt = append(hideExt, e)
 		}
@@ -348,9 +357,10 @@ func (c *Controller) applyFilter(b bool) {
 
 	// scope
 	var scope []string
-	if c.Gui.HideOnlyCheckBox.IsChecked() {
-		for _, e := range strings.Split(strings.Replace(c.Gui.ScopeLineEdit.DisplayText(), " ", "", -1), ",") {
-			//c.Filter.HideExt[e] = true
+	c.Filter.ScopeOnly = c.Gui.ShowScopeOnlyCheckBox.IsChecked()
+	for _, e := range strings.Split(strings.Replace(c.Gui.ScopeLineEdit.DisplayText(), " ", "", -1), ",") {
+		//c.Filter.HideExt[e] = true
+		if len(e) > 0{
 			scope = append(scope, e)
 		}
 	}
