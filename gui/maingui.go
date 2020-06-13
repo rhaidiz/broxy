@@ -14,6 +14,8 @@ import (
 	"github.com/rhaidiz/broxy/util"
 )
 
+var broxyTitle = "Broxy (1.0.0-beta)"
+
 // Broxygui is the main GUI made of tabs
 type Broxygui struct {
 	widgets.QMainWindow
@@ -40,7 +42,7 @@ func (g *Broxygui) setup() {
 	g.history = LoadHistory(util.GetSettingsDir())
 
 	g.settingsMapping = make(map[string]widgets.QWidget_ITF)
-	g.SetWindowTitle("Broxy (1.0.0-alpha.2)")
+	g.SetWindowTitle(broxyTitle)
 	//g.SetMinimumSize(core.NewQSize2(523, 317))
 
 	g.tabWidget = widgets.NewQTabWidget(nil)
@@ -118,6 +120,9 @@ func (g *Broxygui) saveProjectAction(b bool){
 		return
 	}
 
+	projectTitle := g.s.PersistentProject.GetTitle()
+	windowTitle := fmt.Sprintf("%s [%s]", broxyTitle, projectTitle)
+	g.SetWindowTitle(windowTitle)
 	g.history.Add(&project.Project{file,dir})
 }
 
@@ -145,6 +150,9 @@ func (g *Broxygui) newProjectAction(b bool){
 
 func (g *Broxygui) InitWith(s *bcore.Session) {
 	g.s = s
+	projectTitle := s.PersistentProject.GetTitle()
+	windowTitle := fmt.Sprintf("%s [%s]", broxyTitle, projectTitle)
+	g.SetWindowTitle(windowTitle)
 	if s.GlobalSettings.GZipDecode {
 		g.gzipDecodeCheckBox.SetChecked(true)
 	}else{

@@ -61,6 +61,10 @@ func OpenPersistentProject(t string, p string) (*PersistentProject, error) {
 	}, nil
 }
 
+func (p *PersistentProject) GetTitle() string {
+	return p.project.Title
+}
+
 // SaveToFile provides modules the possibility of saving something to file in a JSON format
 func (p *PersistentProject) SaveToFile(m string, stg interface{}) error {
 	return p.saveToFile(m,"_",stg)
@@ -186,6 +190,7 @@ func (p *PersistentProject) Persist(pn, pa string) error {
 	}
 	p.isPersistent = true
 	p.projectName = pn
+	p.project.Title = pn
 	p.projectPath = dest
 	return nil
 }
