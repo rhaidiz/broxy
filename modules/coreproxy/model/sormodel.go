@@ -1,6 +1,8 @@
 package model
 
 import (
+	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"github.com/therecipe/qt/core"
@@ -64,8 +66,14 @@ func (m *SortFilterModel) filterAcceptsRow(sourceRow int, sourceParent *core.QMo
 	scopeCheck := false
 	// scope
 	if len(m.filter.Scope) > 0 && m.filter.ScopeOnly {
-		for _, k := range m.filter.Scope{
-			if req.Host == k {
+		for _, s := range m.filter.Scope{
+			reg := fmt.Sprintf("^%s$", s)
+			r, err := regexp.Compile(reg)
+			if err != nil {
+				// ignore if the scope is not a valid regexp
+				continue
+			}
+			if r.MatchString(req.Host) {
 				scopeCheck = true
 				break
 			}
