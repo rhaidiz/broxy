@@ -3,6 +3,7 @@ package repeater
 import (
 	"strconv"
 	"fmt"
+	"regexp"
 	"github.com/rhaidiz/broxy/core"
 	qtcore "github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/widgets"
@@ -150,8 +151,11 @@ func (g *Gui) NewTab(title string, id int, host, request, response string) widge
 	t.goBtn.ConnectClicked(func(b bool) {
 		c := make(chan string)
 		request := t.RequestEditor.ToPlainText()
+		var re = regexp.MustCompile(`(?mi)[\r\n]+^accept-encoding:.*$`)
+		s := re.ReplaceAllString(request, ``)
+		t.RequestEditor.SetPlainText(s)
 		host := t.HostLine.Text()
-		go g.GoClick(id, host, request, c)
+		go g.GoClick(id, host, s, c)
 		go func(){
 			for resp := range c{
 				t.ResponseEditor.SetPlainText(resp)

@@ -153,11 +153,11 @@ func (g *Broxygui) InitWith(s *bcore.Session) {
 	projectTitle := s.PersistentProject.GetTitle()
 	windowTitle := fmt.Sprintf("%s [%s]", broxyTitle, projectTitle)
 	g.SetWindowTitle(windowTitle)
-	if s.GlobalSettings.GZipDecode {
-		g.gzipDecodeCheckBox.SetChecked(true)
-	}else{
-		g.gzipDecodeCheckBox.SetChecked(false)
-	}
+	//if s.GlobalSettings.GZipDecode {
+	//	g.gzipDecodeCheckBox.SetChecked(true)
+	//}else{
+	//	g.gzipDecodeCheckBox.SetChecked(false)
+	//}
 	
 }
 
@@ -189,23 +189,23 @@ func (g *Broxygui) settingsTab() widgets.QWidget_ITF{
 	g.treeWidget.SetHeaderHidden(true)
 	g.hLayout.AddWidget(g.treeWidget,0 ,0)
 
-	item := widgets.NewQTreeWidgetItem(0)
-	item.SetText(0,"Global Settings")
+	//item := widgets.NewQTreeWidgetItem(0)
+	//item.SetText(0,"Global Settings")
 
 	g.modulesTreeItem = widgets.NewQTreeWidgetItem(0)
 	g.modulesTreeItem.SetText(0, "Modules")
 
-	g.treeWidget.AddTopLevelItem(item)
+	//g.treeWidget.AddTopLevelItem(item)
 	g.treeWidget.AddTopLevelItem(g.modulesTreeItem)
 	//g.treeWidget.SetSizePolicy(widgets.QSizePolicy__Fixed)
 	g.treeWidget.SetFixedWidth(200)
 
-	g.treeWidget.SetCurrentItem(item)
-	global := g.globalSettings()
+	g.treeWidget.SetCurrentItem(g.modulesTreeItem)
+	global := g.emptySettings()
 	g.hLayout.AddWidget(global,0 ,0)
 
-	g.current = "Global Settings"
-	g.settingsMapping["Global Settings"] = global
+	g.current = "Modules"
+	g.settingsMapping["Modules"] = global
 	//g.settingsMapping["Modules"] = g.emptySettings()
 
 	return widget
@@ -215,6 +215,7 @@ func (g *Broxygui) settingsTab() widgets.QWidget_ITF{
 
 func (g *Broxygui) globalSettings() widgets.QWidget_ITF {
 	widget := widgets.NewQWidget(nil, 0)
+	return widget
 	hLayout := widgets.NewQVBoxLayout()
 	widget.SetLayout(hLayout)
 
@@ -248,9 +249,9 @@ func ( g *Broxygui) gzipDecodeCheckBoxClicked(b bool){
 // used for testing
 func (g *Broxygui) emptySettings() widgets.QWidget_ITF {
 	widget := widgets.NewQWidget(nil, 0)
-	hLayout := widgets.NewQHBoxLayout()
-	widget.SetLayout(hLayout)
-	hLayout.AddWidget(widgets.NewQPushButton2("AAAAAA", nil),0,0)
+	//hLayout := widgets.NewQHBoxLayout()
+	//widget.SetLayout(hLayout)
+	//hLayout.AddWidget(widgets.NewQPushButton2("AAAAAA", nil),0,0)
 	return widget
 }
 
