@@ -86,7 +86,7 @@ func (p *PersistentProject) LoadSettings(m string, stg interface{}) error {
 }
 
 func (p *PersistentProject) saveToFile(m,t string, stg interface{}) error {
-	b, err := json.MarshalIndent(stg,""," ")
+	b, err := json.Marshal(stg)
 	if err != nil {
 		return err
 	}
