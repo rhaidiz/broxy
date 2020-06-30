@@ -1,9 +1,5 @@
 package core
 
-import (
-	"github.com/therecipe/qt/widgets"
-)
-
 // Module interface
 type Module interface {
 	Name() string
@@ -13,14 +9,16 @@ type Module interface {
 	Stop() error
 }
 
+// GuiModule interface
 type GuiModule interface {
-	GetModuleGui() widgets.QWidget_ITF
-	Name() string
+	GetModuleGui() interface{}
+	GetSettings() interface{}
+	Title() string
 }
 
+// ControllerModule interface
 type ControllerModule interface {
 	ExecCommand(string, ...interface{})
 	GetModule() Module
 	GetGui() GuiModule
-	Name() string
 }

@@ -7,7 +7,7 @@ Broxy is an open source intercept proxy written in Go. It makes use of [goproxy]
 
 **DISCLAIMER:** this is still an alpha software so bear with me.
 
-![intercept](https://github.com/rhaidiz/broxy/raw/master/media/screen1.png)
+![intercept](https://github.com/rhaidiz/broxy/raw/master/media/main.png)
 
 ## Features
 Broxy is currently a work in progress project. The current version provides the following features:
@@ -15,6 +15,7 @@ Broxy is currently a work in progress project. The current version provides the 
 * Interceptor
 * History with filters
 * Repeater
+* Persistent sessions
 
 # Installation
 

@@ -8,7 +8,8 @@ import (
 	"github.com/therecipe/qt/widgets"
 )
 
-type LogGui struct {
+// Gui represents the Gui of the log module
+type Gui struct {
 	core.GuiModule
 
 	Sess         *core.Session
@@ -16,15 +17,20 @@ type LogGui struct {
 	logTableView *widgets.QTableView
 }
 
-func NewLogGui(s *core.Session) *LogGui {
-	return &LogGui{
+// NewGui returns a Gui of the main log module
+func NewGui(s *core.Session) *Gui {
+	return &Gui{
 		Sess:         s,
 		view:         quick.NewQQuickView(nil),
 		logTableView: widgets.NewQTableView(nil),
 	}
 }
 
-func (g *LogGui) SetTableModel(m *model.SortFilterModel) {
+func (g *Gui) GetSettings() interface{} {
+	return nil
+}
+// SetTableModel sets the table model along with some column width to use in the history table
+func (g *Gui) SetTableModel(m *model.SortFilterModel) {
 	g.logTableView.SetModel(m)
 	g.logTableView.SetColumnWidth(model.Type, 50)
 	g.logTableView.SetColumnWidth(model.Module, 100)
@@ -32,7 +38,8 @@ func (g *LogGui) SetTableModel(m *model.SortFilterModel) {
 	g.logTableView.SetColumnWidth(model.Message, 200)
 }
 
-func (g *LogGui) GetModuleGui() widgets.QWidget_ITF {
+// GetModuleGui returns the Gui for the current module
+func (g *Gui) GetModuleGui() interface{}  {
 
 	widget := widgets.NewQWidget(nil, 0)
 	widget.SetLayout(widgets.NewQVBoxLayout())
@@ -55,6 +62,7 @@ func (g *LogGui) GetModuleGui() widgets.QWidget_ITF {
 	return widget
 }
 
-func (m *LogGui) Name() string {
+// Title returns the time of this Gui
+func (g *Gui) Title() string {
 	return "Log"
 }

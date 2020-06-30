@@ -2,10 +2,12 @@ package repeater
 
 import (
 	"crypto/tls"
-	"github.com/rhaidiz/broxy/core"
 	"net/http"
+
+	"github.com/rhaidiz/broxy/core"
 )
 
+// Repeater represents the repeater module
 type Repeater struct {
 	core.Module
 
@@ -15,6 +17,7 @@ type Repeater struct {
 	client *http.Client
 }
 
+// NewRepeater returns a new repeater module
 func NewRepeater(s *core.Session) *Repeater {
 	// disable x509 certificate check
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
@@ -26,29 +29,19 @@ func NewRepeater(s *core.Session) *Repeater {
 	}
 }
 
+// Name returns the name of the current module
 func (r *Repeater) Name() string {
 	return "Repeater"
 }
 
+// Description returns the description of the current module
 func (r *Repeater) Description() string {
 	return "This is the magical repeater"
 }
 
+// RunRequest performs the given HTTP request and return the HTTP response
 func (r *Repeater) RunRequest(req *http.Request) (*http.Response, error) {
 	//TODO: I might need to use the configuration stored in session
 	return r.client.Do(req)
 
-}
-
-// TODO: remove the following methods
-
-func (r *Repeater) Status() bool {
-	return true
-}
-
-func (r *Repeater) Start() error {
-	return nil
-}
-func (r *Repeater) Stop() error {
-	return nil
 }

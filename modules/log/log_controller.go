@@ -1,23 +1,27 @@
 package log
 
 import (
+	"fmt"
 	"github.com/rhaidiz/broxy/core"
 	"github.com/rhaidiz/broxy/modules/log/model"
-	_ "github.com/therecipe/qt/core"
+	"github.com/rhaidiz/broxy/core/project/decoder"
 )
 
-type LogController struct {
+// Controller represents the controller of the log module
+type Controller struct {
 	core.ControllerModule
-	Module *Log
-	Gui    *LogGui
-	Sess   *core.Session
+	Module 	*Log
+	Gui    	*Gui
+	Sess   	*core.Session
+	encoder	*decoder.Encoder
 
 	//model     *model.CustomTableModel
 	modelSort *model.SortFilterModel
 }
 
-func NewLogController(m *Log, g *LogGui, s *core.Session) *LogController {
-	c := &LogController{
+// NewController returns a controller of the log module
+func NewController(m *Log, g *Gui, s *core.Session) *Controller {
+	c := &Controller{
 		Module: m,
 		Gui:    g,
 		Sess:   s,
@@ -27,28 +31,47 @@ func NewLogController(m *Log, g *LogGui, s *core.Session) *LogController {
 	c.modelSort = model.NewSortFilterModel(nil)
 
 	c.Gui.SetTableModel(c.modelSort)
+
+	decoder, err := c.Sess.PersistentProject.FileDecoder2("logs")
+	if err != nil {
+		panic(fmt.Sprintf("Error while loading log file\n%s",err))
+	}
+	// load stuff
+	for {
+		l := &core.Log{}
+		if err := decoder.Decode(&l); err != nil {
+			break
+		}
+		c.modelSort.Custom.AddItem(*l)
+	}
+
+	encoder, err := c.Sess.PersistentProject.FileEncoder2("logs")
+	if err != nil{
+		panic(fmt.Sprintf("Error while loading log file\n%s",err))
+	}
+	c.encoder = &encoder
 	go c.logEvent()
 	return c
 }
 
-func (c *LogController) GetGui() core.GuiModule {
+// GetGui returns the Gui of the log module
+func (c *Controller) GetGui() core.GuiModule {
 	return c.Gui
 }
 
-func (c *LogController) GetModule() core.Module {
+// GetModule returns the module of the log module
+func (c *Controller) GetModule() core.Module {
 	return c.Module
 }
 
-func (c *LogController) Name() string {
-	return "log"
-}
-
-func (c *LogController) ExecCommand(m string, args ...interface{}) {
+// ExecCommand execs commands submitted by other modules
+func (c *Controller) ExecCommand(m string, args ...interface{}) {
 
 }
 
-func (c *LogController) logEvent() {
-	for l := range c.Sess.LogC {
+func (c *Controller) logEvent() {
+	for l := range c.Sess.LogEvent {
+		(*c.encoder).Encode(l)
 		c.modelSort.Custom.AddItem(l)
 	}
 }

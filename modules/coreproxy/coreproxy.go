@@ -13,6 +13,7 @@ import (
 	"github.com/rhaidiz/broxy/core"
 )
 
+// Coreproxy represents the intercept proxy
 type Coreproxy struct {
 	core.Module
 
@@ -30,13 +31,12 @@ type Coreproxy struct {
 	tr      *transport.Transport
 }
 
-// Create a new proxy
+// NewCoreProxy creates a new intercept proxy
 func NewCoreProxy(s *core.Session) *Coreproxy {
-	// this is my struct that I use to represent the proxy
-	setCa(caCert, caKey)
+	setCa(s.Settings.CACertificate, s.Settings.CAPrivateKey)
 	p := &Coreproxy{
-		Address: s.Config.Address,
-		Port:    s.Config.Port,
+		Address: Stg.IP,
+		Port:    Stg.Port,
 		Proxyh:  goproxy.NewProxyHttpServer(),
 		Req:     0,
 		Resp:    0,
@@ -61,19 +61,20 @@ func NewCoreProxy(s *core.Session) *Coreproxy {
 	return p
 }
 
-func (p *Coreproxy) ChangeIpPort(ip string, port int) error {
+// ChangeIPPort is used to change the ip and port of the current intercept proxy
+func (p *Coreproxy) ChangeIPPort(ip string, port int) error {
 
-	ip_regexp := "^((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))"
-	port_regexp := "(6553[0-5]|655[0-2][0-9]|65[0-4][0-9][0-9]|6[0-4][0-9][0-9][0-9]|[1-5]?[0-9]?[0-9]?[0-9]?[0-9])?$"
+	ipReg := "^((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))"
+	portReg := "(6553[0-5]|655[0-2][0-9]|65[0-4][0-9][0-9]|6[0-4][0-9][0-9][0-9]|[1-5]?[0-9]?[0-9]?[0-9]?[0-9])?$"
 
-	r_ip := regexp.MustCompile(ip_regexp)
-	r_port := regexp.MustCompile(port_regexp)
+	rIP := regexp.MustCompile(ipReg)
+	rPort := regexp.MustCompile(portReg)
 
-	if s := r_ip.FindStringSubmatch(ip); s == nil {
+	if s := rIP.FindStringSubmatch(ip); s == nil {
 		return fmt.Errorf("Not a valid ip %s", ip)
 	}
 
-	if s := r_port.FindStringSubmatch(string(port)); s == nil {
+	if s := rPort.FindStringSubmatch(string(port)); s == nil {
 		return fmt.Errorf("Not a valid port %s", port)
 	}
 
@@ -88,24 +89,27 @@ func (p *Coreproxy) ChangeIpPort(ip string, port int) error {
 	return nil
 }
 
+// Name returns the name of the current module
 func (p *Coreproxy) Name() string {
 	return "Proxy"
 }
 
+// Description returns the description of the current module
 func (p *Coreproxy) Description() string {
 	return "The main core proxy module, the one that logs and sees everything"
 }
 
+// Status returns the status of the current module if any
 func (p *Coreproxy) Status() bool {
 	return p.status
 }
 
-// Start the proxy
+// Start bind the proxy for listening
 func (p *Coreproxy) Start() error {
 	return p.Srv.ListenAndServe()
 }
 
-// Stop the proxy
+// Stop stops the proxy
 func (p *Coreproxy) Stop() error {
 
 	return p.Srv.Shutdown(context.Background())
@@ -138,9 +142,9 @@ func setCa(caCert, caKey []byte) error {
 		return err
 	}
 	goproxy.GoproxyCa = goproxyCa
-	goproxy.OkConnect = &goproxy.ConnectAction{Action: goproxy.ConnectAccept, TLSConfig: goproxy.TLSConfigFromCA(&goproxyCa)}
-	goproxy.MitmConnect = &goproxy.ConnectAction{Action: goproxy.ConnectMitm, TLSConfig: goproxy.TLSConfigFromCA(&goproxyCa)}
-	goproxy.HTTPMitmConnect = &goproxy.ConnectAction{Action: goproxy.ConnectHTTPMitm, TLSConfig: goproxy.TLSConfigFromCA(&goproxyCa)}
-	goproxy.RejectConnect = &goproxy.ConnectAction{Action: goproxy.ConnectReject, TLSConfig: goproxy.TLSConfigFromCA(&goproxyCa)}
+	goproxy.OkConnect = &goproxy.ConnectAction{Action: goproxy.ConnectAccept, TLSConfig: core.TLSConfigFromCA(&goproxyCa)}
+	goproxy.MitmConnect = &goproxy.ConnectAction{Action: goproxy.ConnectMitm, TLSConfig: core.TLSConfigFromCA(&goproxyCa)}
+	goproxy.HTTPMitmConnect = &goproxy.ConnectAction{Action: goproxy.ConnectHTTPMitm, TLSConfig: core.TLSConfigFromCA(&goproxyCa)}
+	goproxy.RejectConnect = &goproxy.ConnectAction{Action: goproxy.ConnectReject, TLSConfig: core.TLSConfigFromCA(&goproxyCa)}
 	return nil
 }

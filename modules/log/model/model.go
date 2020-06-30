@@ -14,6 +14,7 @@ const (
 	Message
 )
 
+// CustomTableModel represents a table model used to populate the log QtTableView
 type CustomTableModel struct {
 	core.QAbstractTableModel
 

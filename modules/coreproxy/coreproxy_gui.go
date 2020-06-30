@@ -18,14 +18,16 @@ const (
 	CopyBaseURLLabel  = "Copy base URL"
 	RepeatLabel       = "Repeat"
 	ClearHistoryLabel = "Clear History"
+	AddToScopeLabel 	= "Add Host to Scope"
 )
 
-type CoreproxyGui struct {
+// Gui represents the GUI of the main intercept proxy
+type Gui struct {
 	core.GuiModule
 
 	Sess *core.Session
 
-	rightClickLabels      [4]string
+	rightClickLabels      []string
 	ControllerInit        func()
 	StartProxy            func(bool)
 	StopProxy             func()
@@ -38,6 +40,7 @@ type CoreproxyGui struct {
 	SaveCAClicked         func(bool)
 	RightItemClicked      func(string, int)
 	settingsTab           *widgets.QTabWidget
+	settingsWidget				widgets.QWidget_ITF
 
 	// history tab
 	historyTableView       *widgets.QTableView
@@ -52,6 +55,8 @@ type CoreproxyGui struct {
 
 	// Filter
 	TextSearchLineEdit    *widgets.QLineEdit
+	ShowScopeOnlyCheckBox *widgets.QCheckBox
+	ScopeLineEdit					*widgets.QLineEdit
 	ApplyFiltersButton    *widgets.QPushButton
 	ResetFiltersButton    *widgets.QPushButton
 	S100CheckBox          *widgets.QCheckBox
@@ -88,16 +93,17 @@ type CoreproxyGui struct {
 	Drop                    func(bool)
 }
 
-func NewCoreproxyGui(s *core.Session) *CoreproxyGui {
-	return &CoreproxyGui{
+// NewGui creates a new Gui for the main intercetp proxy
+func NewGui(s *core.Session) *Gui {
+	return &Gui{
 		Sess:             s,
 		historyTableView: widgets.NewQTableView(nil),
 		view:             quick.NewQQuickView(nil),
-		rightClickLabels: [4]string{CopyURLLabel, CopyBaseURLLabel, RepeatLabel, ClearHistoryLabel},
+		rightClickLabels: []string{CopyURLLabel, CopyBaseURLLabel, RepeatLabel, ClearHistoryLabel, AddToScopeLabel},
 	}
 }
 
-func (g *CoreproxyGui) interceptorTabGui() widgets.QWidget_ITF {
+func (g *Gui) interceptorTabGui() widgets.QWidget_ITF {
 	widget := widgets.NewQWidget(nil, 0)
 	vlayout := widgets.NewQVBoxLayout()
 	widget.SetLayout(vlayout)
@@ -130,10 +136,10 @@ func (g *CoreproxyGui) interceptorTabGui() widgets.QWidget_ITF {
 
 }
 
-func (g *CoreproxyGui) filtersTabGui() widgets.QWidget_ITF {
+func (g *Gui) filtersTabGui() widgets.QWidget_ITF {
 	scrollArea := widgets.NewQScrollArea(nil)
 	scrollArea.SetWidgetResizable(true)
-	scrollArea.SetGeometry2(10, 10, 200, 200)
+	//scrollArea.SetGeometry2(10, 10, 400, 400)
 	scrollAreaWidget := widgets.NewQWidget(nil, 0)
 	vlayout1 := widgets.NewQVBoxLayout()
 	scrollAreaWidget.SetLayout(vlayout1)
@@ -150,13 +156,35 @@ func (g *CoreproxyGui) filtersTabGui() widgets.QWidget_ITF {
 	label2.SetFont(font2)
 	label2.SetText("Text search")
 	vlayout1.AddWidget(label2, 0, qtcore.Qt__AlignLeft)
+	//scrollAreaWidget.SetStyleSheet("background-color: red")
 
 	g.TextSearchLineEdit = widgets.NewQLineEdit(nil)
-	g.TextSearchLineEdit.SetMinimumSize(qtcore.NewQSize2(150, 0))
-	g.TextSearchLineEdit.SetMaximumSize(qtcore.NewQSize2(150, 16777215))
+	g.TextSearchLineEdit.SetMinimumSize(qtcore.NewQSize2(450, 0))
+	//g.TextSearchLineEdit.SetMaximumSize(qtcore.NewQSize2(450, 16777215))
 	g.TextSearchLineEdit.SetBaseSize(qtcore.NewQSize2(0, 0))
 	g.TextSearchLineEdit.SetText("")
 	vlayout1.AddWidget(g.TextSearchLineEdit, 0, qtcore.Qt__AlignLeft)
+
+	labelScope := widgets.NewQLabel(nil, 0)
+	fontScope := gui.NewQFont()
+	fontScope.SetPointSize(20)
+	fontScope.SetBold(true)
+	fontScope.SetWeight(75)
+	labelScope.SetFont(fontScope)
+	labelScope.SetText("Scope")
+	vlayout1.AddWidget(labelScope, 0, qtcore.Qt__AlignLeft)
+
+	// Scope
+	g.ScopeLineEdit = widgets.NewQLineEdit(nil)
+	//g.ScopeLineEdit.SetMinimumSize(qtcore.NewQSize2(150, 0))
+	g.ScopeLineEdit.SetMinimumSize(qtcore.NewQSize2(450, 16777215))
+	//g.ScopeLineEdit.SetBaseSize(qtcore.NewQSize2(0, 0))
+	g.ScopeLineEdit.SetText("")
+	vlayout1.AddWidget(g.ScopeLineEdit, 0, qtcore.Qt__AlignLeft)
+
+	g.ShowScopeOnlyCheckBox = widgets.NewQCheckBox(nil)
+	g.ShowScopeOnlyCheckBox.SetText("Show Scope Only")
+	vlayout1.AddWidget(g.ShowScopeOnlyCheckBox, 0, qtcore.Qt__AlignLeft)
 
 	// Status
 	label3 := widgets.NewQLabel(nil, 0)
@@ -219,10 +247,11 @@ func (g *CoreproxyGui) filtersTabGui() widgets.QWidget_ITF {
 	g.HideOnlyCheckBox.SetText("Hide")
 
 	gridLayout.AddWidget(g.ShowExtensionLineEdit)
-	gridLayout.AddWidget(g.HideExtensionLineEdit)
-
 	gridLayout.AddWidget(g.ShowOnlyCheckBox)
+
+	gridLayout.AddWidget(g.HideExtensionLineEdit)
 	gridLayout.AddWidget(g.HideOnlyCheckBox)
+
 
 	spacerItem := widgets.NewQSpacerItem(400, 20, widgets.QSizePolicy__Expanding, widgets.QSizePolicy__Minimum)
 	gridLayout.AddItem(spacerItem, 0, 2, 1, 1, qtcore.Qt__AlignRight)
@@ -246,7 +275,12 @@ func (g *CoreproxyGui) filtersTabGui() widgets.QWidget_ITF {
 	return scrollArea
 }
 
-func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
+//func (g *Gui) settingsTabGui() widgets.QWidget_ITF {
+func (g *Gui) GetSettings() interface{} {
+	return g.settingsWidget
+}
+
+func (g *Gui) settingsGui() widgets.QWidget_ITF {
 	scrollArea := widgets.NewQScrollArea(nil)
 	scrollArea.SetWidgetResizable(true)
 	scrollArea.SetGeometry2(10, 10, 200, 200)
@@ -269,10 +303,10 @@ func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
 	label.SetText("Proxy Listener")
 	vlayout1.AddWidget(label, 0, qtcore.Qt__AlignLeft)
 
-	label_2 := widgets.NewQLabel(nil, 0)
-	label_2.SetObjectName("label_2")
-	label_2.SetText("Description goes here")
-	vlayout1.AddWidget(label_2, 0, qtcore.Qt__AlignLeft)
+	label2 := widgets.NewQLabel(nil, 0)
+	label2.SetObjectName("label2")
+	label2.SetText("Description goes here")
+	vlayout1.AddWidget(label2, 0, qtcore.Qt__AlignLeft)
 
 	gridLayout := widgets.NewQGridLayout2()
 	g.ListenerLineEdit = widgets.NewQLineEdit(nil)
@@ -307,10 +341,10 @@ func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
 	g.RespInterceptCheckBox.ConnectClicked(g.CheckRespInterception)
 	vlayout1.AddWidget(g.RespInterceptCheckBox, 0, qtcore.Qt__AlignLeft)
 
-	label_ca := widgets.NewQLabel(nil, 0)
-	label_ca.SetText("Certificate Authority")
-	label_ca.SetFont(font)
-	vlayout1.AddWidget(label_ca, 0, qtcore.Qt__AlignLeft)
+	labelCA := widgets.NewQLabel(nil, 0)
+	labelCA.SetText("Certificate Authority")
+	labelCA.SetFont(font)
+	vlayout1.AddWidget(labelCA, 0, qtcore.Qt__AlignLeft)
 
 	g.SaveCAButton = widgets.NewQPushButton2("Save CA certificate", nil)
 	g.SaveCAButton.ConnectClicked(g.SaveCAClicked)
@@ -327,10 +361,12 @@ func (g *CoreproxyGui) settingsTabGui() widgets.QWidget_ITF {
 	return scrollArea
 }
 
-func (g *CoreproxyGui) SetRightClickMenu() {
+// SetRightClickMenu sets the menu items when right clicking an item in the history table
+func (g *Gui) SetRightClickMenu() {
 }
 
-func (g *CoreproxyGui) SetTableModel(m *model.SortFilterModel) {
+// SetTableModel sets the table model along with some column width to use in the history table
+func (g *Gui) SetTableModel(m *model.SortFilterModel) {
 	g.historyTableView.SetModel(m)
 	g.historyTableView.SetColumnWidth(model.ID, 40)
 	g.historyTableView.SetColumnWidth(model.Host, 200)
@@ -344,34 +380,39 @@ func (g *CoreproxyGui) SetTableModel(m *model.SortFilterModel) {
 	g.SetRightClickMenu()
 }
 
-func (g *CoreproxyGui) HideAllTabs() {
+// HideAllTabs hides the tabs used to view details of a single row in the history table
+func (g *Gui) HideAllTabs() {
 	for i := g.reqRespTab.Count(); i != 0; i-- {
 		g.reqRespTab.RemoveTab(i)
 	}
 }
 
-func (g *CoreproxyGui) ShowReqTab(req string) {
+// ShowReqTab shows the request tab for the currently selected item in the history table
+func (g *Gui) ShowReqTab(req string) {
 	g.reqRespTab.AddTab(g.RequestTextEdit, "Request")
 	g.RequestTextEdit.SetPlainText(req)
 }
 
-func (g *CoreproxyGui) ShowEditedReqTab(edited_req string) {
+// ShowEditedReqTab shows the edited request tab for the currently selected item in the history table
+func (g *Gui) ShowEditedReqTab(editedReq string) {
 	g.reqRespTab.AddTab(g.EditedRequestTextEdit, "Edited Request")
-	g.EditedRequestTextEdit.SetPlainText(edited_req)
+	g.EditedRequestTextEdit.SetPlainText(editedReq)
 
 }
 
-func (g *CoreproxyGui) ShowRespTab(resp string) {
+// ShowRespTab shows the response tab for the currently selected item in the history table
+func (g *Gui) ShowRespTab(resp string) {
 	g.reqRespTab.AddTab(g.ResponseTextEdit, "Response")
 	g.ResponseTextEdit.SetPlainText(resp)
 }
 
-func (g *CoreproxyGui) ShowEditedRespTab(edited_resp string) {
+// ShowEditedRespTab shows the edited response tab for the currently selected item in the history table
+func (g *Gui) ShowEditedRespTab(editedResp string) {
 	g.reqRespTab.AddTab(g.EditedResponseTextEdit, "Edited Response")
-	g.EditedResponseTextEdit.SetPlainText(edited_resp)
+	g.EditedResponseTextEdit.SetPlainText(editedResp)
 }
 
-func (g *CoreproxyGui) customContextMenuRequested(p *qtcore.QPoint) {
+func (g *Gui) customContextMenuRequested(p *qtcore.QPoint) {
 	if g.contextMenu == nil {
 		g.contextMenu = widgets.NewQMenu(nil)
 		copyURLAction := g.contextMenu.AddAction(CopyURLLabel)
@@ -402,12 +443,20 @@ func (g *CoreproxyGui) customContextMenuRequested(p *qtcore.QPoint) {
 			}
 		})
 
+		addToScopeAction := g.contextMenu.AddAction(AddToScopeLabel)
+		addToScopeAction.ConnectTriggered(func(b bool) {
+			if len(g.historyTableView.SelectedIndexes()) > 0 {
+				g.RightItemClicked(AddToScopeLabel, g.historyTableView.SelectedIndexes()[0].Row())
+			}
+		})
+
 	}
 	p.SetY(p.Ry() + 15)
 	g.contextMenu.Exec2(g.historyTableView.MapToGlobal(p), nil)
 }
 
-func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
+// GetModuleGui returns the Gui for the current module
+func (g *Gui) GetModuleGui() interface{} {
 	g.coreProxyGui = widgets.NewQTabWidget(nil)
 	g.coreProxyGui.SetDocumentMode(true)
 
@@ -471,7 +520,8 @@ func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
 
 	g.coreProxyGui.AddTab(g.interceptorTabGui(), "Interceptor")
 	g.coreProxyGui.AddTab(g.historyTab, "History")
-	g.coreProxyGui.AddTab(g.settingsTabGui(), "Settings")
+	g.settingsWidget = g.settingsGui()
+	//g.coreProxyGui.AddTab(g.settingsTabGui(), "Settings")
 
 	//IMP: make me pretier
 	g.ControllerInit()
@@ -479,7 +529,8 @@ func (g *CoreproxyGui) GetModuleGui() widgets.QWidget_ITF {
 	return g.coreProxyGui
 }
 
-func (t *CoreproxyGui) FileSaveAs(s string) bool {
+// FileSaveAs saves the CA file
+func (g *Gui) FileSaveAs(s string) bool {
 	var fileDialog = widgets.NewQFileDialog2(nil, "Save as...", "broxyca.pem", "PEM (*.pem)")
 	fileDialog.SetAcceptMode(widgets.QFileDialog__AcceptSave)
 	var mimeTypes = []string{"application/x-pem-file"}
@@ -502,11 +553,7 @@ func (t *CoreproxyGui) FileSaveAs(s string) bool {
 	return true
 }
 
-func (g *CoreproxyGui) Name() string {
-	return "Proxy"
-}
-
-func (g *CoreproxyGui) bench(b bool) {
+func (g *Gui) bench(b bool) {
 	fmt.Println("start here")
 
 	s := time.Now()
@@ -527,4 +574,9 @@ func (g *CoreproxyGui) bench(b bool) {
 	elapsed := time.Since(s)
 	fmt.Println(elapsed)
 
+}
+
+// Title returns the time of this Gui
+func (g *Gui) Title() string {
+	return "Proxy"
 }

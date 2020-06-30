@@ -2,8 +2,10 @@ package coreproxy
 
 import (
 	"bytes"
+	"github.com/rhaidiz/broxy/core/project/decoder"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -12,133 +14,293 @@ import (
 
 	"github.com/elazarl/goproxy"
 	"github.com/rhaidiz/broxy/core"
+	_ "github.com/rhaidiz/broxy/core/project"
 	"github.com/rhaidiz/broxy/modules/coreproxy/model"
-	qtcore "github.com/therecipe/qt/core"
-	"github.com/therecipe/qt/gui"
+	"github.com/atotto/clipboard"
 )
 
-type CoreproxyController struct {
+// Controller represents the controller for the main intercetp proxy
+type Controller struct {
 	core.ControllerModule
 	Module *Coreproxy
-	Gui    *CoreproxyGui
+	Gui    *Gui
 	Sess   *core.Session
-	filter *model.Filter
+	Filter *model.Filter
 
 	isRunning   bool
 	model       *model.SortFilterModel
 	id          int
 	ignoreHTTPS bool
 
-	forward_chan chan bool
-	drop_chan    chan bool
+	forwardChan chan bool
+	dropChan    chan bool
 	// will maintain the number of requests in queue
-	requests_queue  int
-	responses_queue int
+	requestsQueue  int
+	responsesQueue int
 
 	dropped map[int64]bool
+
+	// encoders
+	requestEnc 				decoder.Encoder
+	requestEditedEnc		decoder.Encoder
+	responseEnc				decoder.Encoder
+	responseEditedEnc		decoder.Encoder
+
+	// decoders
+	requestDec				decoder.Decoder
+	requestEditedDec		decoder.Decoder
+	responseDec				decoder.Decoder
+	responseEditedDec		decoder.Decoder
 }
 
 var mutex = &sync.Mutex{}
+var count int64
 
-func NewCoreproxyController(proxy *Coreproxy, proxygui *CoreproxyGui, s *core.Session) *CoreproxyController {
-	c := &CoreproxyController{
-		Module:          proxy,
-		Gui:             proxygui,
-		Sess:            s,
-		isRunning:       false,
-		id:              0,
-		ignoreHTTPS:     false,
-		forward_chan:    make(chan bool),
-		drop_chan:       make(chan bool),
-		requests_queue:  0,
-		responses_queue: 0,
-		dropped:         make(map[int64]bool),
-		filter:          &model.Filter{},
+// NewController creates a new controller for the core intercetp proxy
+func NewController(proxy *Coreproxy, proxygui *Gui, s *core.Session) *Controller {
+	c := &Controller{
+		Module:         proxy,
+		Gui:            proxygui,
+		Sess:           s,
+		isRunning:      false,
+		id:             0,
+		ignoreHTTPS:    false,
+		forwardChan:    make(chan bool),
+		dropChan:       make(chan bool),
+		requestsQueue:  0,
+		responsesQueue: 0,
+		dropped:        make(map[int64]bool),
+		Filter:         model.DefaultFilter,
 	}
 
+	// get the encoders
+	var err error
+	c.requestEnc, err 		= s.PersistentProject.FileEncoder2("requests")
+	if err != nil {
+		panic("Error while opening history!")
+	}
+	c.requestEditedEnc, err 	= s.PersistentProject.FileEncoder2("requests_edited")
+	if err != nil {
+		panic("Error while opening history!")
+	}
+	c.responseEnc, err 		= s.PersistentProject.FileEncoder2("response")
+	if err != nil {
+		panic("Error while opening history!")
+	}
+	c.responseEditedEnc, err 	= s.PersistentProject.FileEncoder2("response_edited")
+	if err != nil {
+		panic("Error while opening history!")
+	}
+
+	// get the decoders, which I only need to read the history the first time
+	c.requestDec, err 		= s.PersistentProject.FileDecoder2("requests")
+	if err != nil {
+		panic("Error while opening history!")
+	}
+	c.requestEditedDec, err 	= s.PersistentProject.FileDecoder2("requests_edited")
+	if err != nil {
+		panic("Error while opening history!")
+	}
+	c.responseDec, err 		= s.PersistentProject.FileDecoder2("response")
+	if err != nil {
+		panic("Error while opening history!")
+	}
+	c.responseEditedDec, err 	= s.PersistentProject.FileDecoder2("response_edited")
+	if err != nil {
+		panic("Error while opening history!")
+	}
+
+	// load the history
+	count = 1
+	for {
+		// load the requests
+		var req model.Request
+		var row model.Row
+		if err := c.requestDec.Decode(&req); err != nil {
+			break
+		}
+		row.ID = req.ID
+		if req.ID > count{
+			count = req.ID
+		}
+		row.Req = &req
+		model.History = append(model.History, &row)
+		model.HashMapHistory[row.ID] = len(model.History) - 1
+	}
+	for{
+		// load edited requests
+		var req model.Request
+		if err := c.requestEditedDec.Decode(&req); err != nil {
+			break
+		}
+		row := model.History[model.HashMapHistory[req.ID]]
+		(*row).EditedReq = &req
+	}
+	for{
+		// load the responses
+		var resp model.Response
+		if err := c.responseDec.Decode(&resp); err != nil {
+			break
+		}
+		row := model.History[model.HashMapHistory[resp.ID]]
+		(*row).Resp = &resp
+	}
+	for{
+		// load edited responses
+		var resp model.Response
+		if err := c.responseEditedDec.Decode(&resp); err != nil {
+			break
+		}
+		row := model.History[model.HashMapHistory[resp.ID]]
+		(*row).EditedResp = &resp
+	}
+
+	//count = int64(len(model.History))
+	// load settings and save settings
+	c.Sess.PersistentProject.LoadSettings("coreproxy", Stg)
+	c.Sess.PersistentProject.SaveSettings("coreproxy", Stg)
+
+	c.Sess.PersistentProject.LoadSettings("filters", c.Filter)
+	c.Sess.PersistentProject.SaveSettings("filters", c.Filter)
+
+
 	c.model = model.NewSortFilterModel(nil)
+	//c.model.Custom.Refresh()
+
 	c.Module.OnReq = c.onReq
 	c.Module.OnResp = c.onResp
 	c.Module.Proxyh.OnRequest().HandleConnect(goproxy.FuncHttpsHandler(c.broxyConnectHandle))
 	c.Gui.SetTableModel(c.model)
-	c.Gui.StartProxy = c.startProxy
+
+	// UI events
 	c.Gui.RowClicked = c.selectRow
-	c.Gui.Toggle = c.interceptorToggle
 	c.Gui.Forward = c.forward
 	c.Gui.Drop = c.drop
 	c.Gui.ApplyFilters = c.applyFilter
 	c.Gui.ResetFilters = c.resetFilter
-	c.Gui.ControllerInit = c.initUIContent
-	c.Gui.CheckReqInterception = c.checkReqInterception
-	c.Gui.CheckRespInterception = c.checkRespInterception
 	c.Gui.SaveCAClicked = c.downloadCAClicked
 	c.Gui.RightItemClicked = c.rightItemClicked
+
+	// UI settings events
+	c.Gui.StartProxy = c.startProxy
+	c.Gui.Toggle = c.interceptorToggle
+	c.Gui.CheckReqInterception = c.checkReqInterception
+	c.Gui.CheckRespInterception = c.checkRespInterception
 	c.Gui.CheckIgnoreHTTPS = c.ignoreHTTPSToggle
+
+	// UI init
+	c.Gui.ControllerInit = c.initUIContent
 	return c
 }
 
-func (c *CoreproxyController) GetGui() core.GuiModule {
+// GetGui returns the Gui of the current controller
+func (c *Controller) GetGui() core.GuiModule {
 	return c.Gui
 }
 
-func (c *CoreproxyController) Name() string {
-	return "coreproxy"
-}
-
-func (c *CoreproxyController) GetModule() core.Module {
+// GetModule returns the module of the current controller
+func (c *Controller) GetModule() core.Module {
 	return c.Module
 }
 
-func (c *CoreproxyController) ExecCommand(m string, args ...interface{}) {
+// ExecCommand execs commands submitted by other modules
+func (c *Controller) ExecCommand(m string, args ...interface{}) {
 
 }
 
-// init UI content
-func (c *CoreproxyController) initUIContent() {
-	c.setDefaultFilter()
-	c.Gui.ListenerLineEdit.SetText(fmt.Sprintf("%s:%d", c.Sess.Config.Address, c.Sess.Config.Port))
-	if c.Sess.Config.Interceptor {
+func (c *Controller) initUIContent() {
+	//c.setDefaultFilter()
+	c.setFilter(c.Filter)
+	c.Gui.ListenerLineEdit.SetText(fmt.Sprintf("%s:%d", Stg.IP, Stg.Port))
+	if Stg.Interceptor {
 		c.Gui.InterceptorToggleButton.SetChecked(true)
 	}
-	if c.Sess.Config.ReqIntercept {
+	if Stg.ReqIntercept {
 		c.Gui.ReqInterceptCheckBox.SetChecked(true)
 	}
-	if c.Sess.Config.RespIntercept {
+	if Stg.RespIntercept {
 		c.Gui.RespInterceptCheckBox.SetChecked(true)
 	}
 }
 
-func (c *CoreproxyController) rightItemClicked(s string, r int) {
-	clipboard := c.Sess.QApp.Clipboard()
-	actual_row := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
-	req, _, _, _ := c.model.Custom.GetReqResp(actual_row - 1)
+func (c *Controller) rightItemClicked(s string, r int) {
+	req, _, _, _ := c.model.Custom.GetReqResp(c.model.GetRowId(r))
+	// shouldn't this be a switch?
 	if s == CopyURLLabel {
-		clipboard.SetText(fmt.Sprintf("%s://%s%s", req.Url.Scheme, req.Host, req.Url.Path), gui.QClipboard__Clipboard)
+		clipboard.WriteAll(fmt.Sprintf("%s://%s%s", req.URL.Scheme, req.Host, req.URL.Path))
 	} else if s == CopyBaseURLLabel {
-		clipboard.SetText(fmt.Sprintf("%s://%s", req.Url.Scheme, req.Host), gui.QClipboard__Clipboard)
+		clipboard.WriteAll(fmt.Sprintf("%s://%s", req.URL.Scheme, req.Host))
 	} else if s == RepeatLabel {
 		// FIXME: I **really** don't like this
-		c.Sess.Exec("repeater", "send-to", req)
+		c.Sess.Exec("Repeater", "send-to", req)
 	} else if s == ClearHistoryLabel {
 		c.model.Custom.ClearHistory()
 		c.id = 0
+	} else if s == AddToScopeLabel {
+		c.Filter.Scope = append(c.Filter.Scope, req.Host)
+		c.setFilter(c.Filter)
 	}
 }
 
-func (c *CoreproxyController) downloadCAClicked(b bool) {
-	c.Gui.FileSaveAs(string(caCert))
+func (c *Controller) downloadCAClicked(b bool) {
+	c.Gui.FileSaveAs(string(c.Sess.Settings.CACertificate))
 }
 
-func (c *CoreproxyController) checkReqInterception(b bool) {
-	c.Sess.Config.ReqIntercept = c.Gui.ReqInterceptCheckBox.IsChecked()
+func (c *Controller) checkReqInterception(b bool) {
+	Stg.ReqIntercept = c.Gui.ReqInterceptCheckBox.IsChecked()
+	c.saveSettings()
 }
 
-func (c *CoreproxyController) checkRespInterception(b bool) {
-	c.Sess.Config.RespIntercept = c.Gui.RespInterceptCheckBox.IsChecked()
+func (c *Controller) checkRespInterception(b bool) {
+	Stg.RespIntercept = c.Gui.RespInterceptCheckBox.IsChecked()
+	c.saveSettings()
+}
+
+func (c *Controller) setFilter(f *model.Filter){
+	c.Gui.TextSearchLineEdit.SetText(f.Search)
+	for _, s := range f.StatusCode {
+		switch s {
+		case 100:
+			c.Gui.S100CheckBox.SetChecked(true)
+			break
+		case 200:
+			c.Gui.S200CheckBox.SetChecked(true)
+			break
+		case 300:
+			c.Gui.S300CheckBox.SetChecked(true)
+			break
+		case 400:
+			c.Gui.S400CheckBox.SetChecked(true)
+			break
+		case 500:
+			c.Gui.S500CheckBox.SetChecked(true)
+			break
+		}
+	}
+	if f.Show {
+		c.Gui.ShowOnlyCheckBox.SetChecked(true)
+	}
+	if f.Hide {
+		c.Gui.HideOnlyCheckBox.SetChecked(true)
+	}
+	if f.ScopeOnly {
+		c.Gui.ShowScopeOnlyCheckBox.SetChecked(true)
+	}
+
+	showExt := strings.Join(f.ShowExt, ", ")
+	c.Gui.ShowExtensionLineEdit.SetText(showExt)
+
+	hideExt := strings.Join(f.HideExt, ", ")
+	c.Gui.HideExtensionLineEdit.SetText(hideExt)
+
+	scope := strings.Join(f.Scope, ", ")
+	c.Gui.ScopeLineEdit.SetText(scope)
+
+	c.applyFilter(true)
 }
 
 // Defaut history filters
-func (c *CoreproxyController) setDefaultFilter() {
+func (c *Controller) setDefaultFilter() {
 	c.Gui.TextSearchLineEdit.SetText("")
 	c.Gui.S100CheckBox.SetChecked(true)
 	c.Gui.S200CheckBox.SetChecked(true)
@@ -152,8 +314,8 @@ func (c *CoreproxyController) setDefaultFilter() {
 	c.applyFilter(true)
 }
 
-func (c *CoreproxyController) applyFilter(b bool) {
-	c.filter.Search = c.Gui.TextSearchLineEdit.DisplayText()
+func (c *Controller) applyFilter(b bool) {
+	c.Filter.Search = c.Gui.TextSearchLineEdit.DisplayText()
 	var status []int
 	if c.Gui.S100CheckBox.IsChecked() {
 		status = append(status, 100)
@@ -172,58 +334,78 @@ func (c *CoreproxyController) applyFilter(b bool) {
 	}
 	// this also looks bad, creating a new status each time and replacing it ... bleah ...
 	//IMP: make me pretier
-	c.filter.StatusCode = status
-	c.filter.Show_ext = make(map[string]bool)
-	if c.Gui.ShowOnlyCheckBox.IsChecked() {
-		for _, e := range strings.Split(strings.Replace(c.Gui.ShowExtensionLineEdit.DisplayText(), " ", "", -1), ",") {
-			c.filter.Show_ext[e] = true
+	c.Filter.StatusCode = status
+	var showExt []string
+	c.Filter.Show = c.Gui.ShowOnlyCheckBox.IsChecked()
+	for _, e := range strings.Split(strings.Replace(c.Gui.ShowExtensionLineEdit.DisplayText(), " ", "", -1), ",") {
+		if len(e) > 0 {
+			//c.Filter.ShowExt[e] = true
+			showExt = append(showExt, e)
 		}
 	}
-	c.filter.Hide_ext = make(map[string]bool)
-	if c.Gui.HideOnlyCheckBox.IsChecked() {
-		for _, e := range strings.Split(strings.Replace(c.Gui.HideExtensionLineEdit.DisplayText(), " ", "", -1), ",") {
-			c.filter.Hide_ext[e] = true
+	c.Filter.ShowExt = showExt
+	//c.Filter.HideExt = make(map[string]bool)
+	var hideExt []string
+	c.Filter.Hide = c.Gui.HideOnlyCheckBox.IsChecked()
+	for _, e := range strings.Split(strings.Replace(c.Gui.HideExtensionLineEdit.DisplayText(), " ", "", -1), ",") {
+		if len(e) > 0{
+			//c.Filter.HideExt[e] = true
+			hideExt = append(hideExt, e)
 		}
 	}
-	c.model.SetFilter(c.filter)
+	c.Filter.HideExt = hideExt
+
+	// scope
+	var scope []string
+	c.Filter.ScopeOnly = c.Gui.ShowScopeOnlyCheckBox.IsChecked()
+	for _, e := range strings.Split(strings.Replace(c.Gui.ScopeLineEdit.DisplayText(), " ", "", -1), ",") {
+		//c.Filter.HideExt[e] = true
+		if len(e) > 0{
+			scope = append(scope, e)
+		}
+	}
+	c.Filter.Scope = scope
+
+	c.model.SetFilter(c.Filter)
+	c.Sess.PersistentProject.SaveSettings("filters", c.Filter)
 }
 
-func (c *CoreproxyController) resetFilter(b bool) {
+func (c *Controller) resetFilter(b bool) {
 	c.setDefaultFilter()
 }
 
-func (c *CoreproxyController) selectRow(r int) {
+func (c *Controller) selectRow(r int) {
 	c.Gui.HideAllTabs()
-	actual_row := c.model.Index(r, 0, qtcore.NewQModelIndex()).Data(model.ID).ToInt(nil)
-	req, edited_req, resp, edited_resp := c.model.Custom.GetReqResp(actual_row - 1)
+	rowId := c.model.GetRowId(r)
+	req, editedReq, resp, editedResp := c.model.Custom.GetReqResp(rowId)
 	if req != nil {
 		c.Gui.ShowReqTab(req.ToString())
 	}
-	if edited_req != nil {
-		c.Gui.ShowEditedReqTab(edited_req.ToString())
+	if editedReq != nil {
+		c.Gui.ShowEditedReqTab(editedReq.ToString())
 	}
 	if resp != nil {
 		c.Gui.ShowRespTab(resp.ToString())
 	}
-	if edited_resp != nil {
-		c.Gui.ShowEditedRespTab(edited_resp.ToString())
+	if editedResp != nil {
+		c.Gui.ShowEditedRespTab(editedResp.ToString())
 	}
 }
 
-func (c *CoreproxyController) startProxy(b bool) {
+func (c *Controller) startProxy(b bool) {
 
 	if !c.isRunning {
 		// Start and stop the proxy
-		ip_port_regxp := "^((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)):(6553[0-5]|655[0-2][0-9]|65[0-4][0-9][0-9]|6[0-4][0-9][0-9][0-9]|[1-5]?[0-9]?[0-9]?[0-9]?[0-9])?$"
+		IPPortReg := "^((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?).){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)):(6553[0-5]|655[0-2][0-9]|65[0-4][0-9][0-9]|6[0-4][0-9][0-9][0-9]|[1-5]?[0-9]?[0-9]?[0-9]?[0-9])?$"
 
-		r := regexp.MustCompile(ip_port_regxp)
+		r := regexp.MustCompile(IPPortReg)
 
 		if s := r.FindStringSubmatch(c.Gui.ListenerLineEdit.DisplayText()); s != nil {
 			p, _ := strconv.Atoi(s[2])
-			if e := c.Module.ChangeIpPort(s[1], p); e == nil {
+			if e := c.Module.ChangeIPPort(s[1], p); e == nil {
 				// if I can change ip and port, change it also in the config struct
-				c.Sess.Config.Address = s[1]
-				c.Sess.Config.Port = p
+				Stg.IP = s[1]
+				Stg.Port = p
 				go func() {
 					c.Gui.StartStopButton.SetText("Stop")
 					c.isRunning = true
@@ -241,7 +423,7 @@ func (c *CoreproxyController) startProxy(b bool) {
 			c.Sess.Err(c.Module.Name(), "Wrong input")
 		}
 	} else {
-		if c.Sess.Config.Interceptor {
+		if Stg.Interceptor {
 			c.interceptorToggle(false)
 		}
 		c.Module.Stop()
@@ -249,12 +431,13 @@ func (c *CoreproxyController) startProxy(b bool) {
 		c.Sess.Info(c.Module.Name(), "Stopping proxy.")
 		c.Gui.StartStopButton.SetText("Start")
 	}
+	c.saveSettings()
 }
 
 // Executed when a response arrives
-func (c *CoreproxyController) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
+func (c *Controller) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *http.Response {
 
-	http_item := model.NewHttpItem(nil)
+	httpItem := model.NewHTTPItem(nil)
 
 	var bodyBytes []byte
 	if r != nil {
@@ -262,7 +445,8 @@ func (c *CoreproxyController) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 		// Restore the io.ReadCloser to its original state
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
-	http_item.Resp = &model.Response{
+	httpItem.Resp = &model.Response{
+		ID:			   count + ctx.Session,
 		Status:        r.Status,
 		StatusCode:    r.StatusCode,
 		Body:          bodyBytes,
@@ -270,39 +454,43 @@ func (c *CoreproxyController) onResp(r *http.Response, ctx *goproxy.ProxyCtx) *h
 		ContentLength: int64(len(bodyBytes)),
 		Headers:       cloneHeaders(r.Header),
 	}
+
+	go func(){ c.responseEnc.Encode(httpItem.Resp) }()
+	c.model.Custom.AddResponse(httpItem.Resp, count+ctx.Session)
 	// activate interceptor
 	_, dropped := c.dropped[ctx.Session]
-	if c.Sess.Config.Interceptor && c.Sess.Config.RespIntercept && !dropped {
+	if Stg.Interceptor && Stg.RespIntercept && !dropped {
 		// if the response is nil, it means the interceptor did not change the response
 
 		r.ContentLength = int64(len(bodyBytes))
-		edited_resp := c.interceptorResponseActions(ctx.Req, r)
+		editedResp := c.interceptorResponseActions(ctx.Req, r)
 		// the response was edited
-		if edited_resp != nil {
-			var edited_bodyBytes []byte
-			edited_bodyBytes, _ = ioutil.ReadAll(edited_resp.Body)
-			edited_resp.Body = ioutil.NopCloser(bytes.NewBuffer(edited_bodyBytes))
-			http_item.EditedResp = &model.Response{
-				Status:        edited_resp.Status,
-				StatusCode:    edited_resp.StatusCode,
-				Proto:         edited_resp.Proto,
-				Body:          edited_bodyBytes,
-				ContentLength: int64(len(edited_bodyBytes)),
-				Headers:       cloneHeaders(edited_resp.Header),
+		if editedResp != nil {
+			var editedBodyBytes []byte
+			editedBodyBytes, _ = ioutil.ReadAll(editedResp.Body)
+			editedResp.Body = ioutil.NopCloser(bytes.NewBuffer(editedBodyBytes))
+			httpItem.EditedResp = &model.Response{
+				ID:			   count + ctx.Session,
+				Status:        editedResp.Status,
+				StatusCode:    editedResp.StatusCode,
+				Proto:         editedResp.Proto,
+				Body:          editedBodyBytes,
+				ContentLength: int64(len(editedBodyBytes)),
+				Headers:       cloneHeaders(editedResp.Header),
 			}
-			r = edited_resp
+			r = editedResp
+			go func(){ c.responseEditedEnc.Encode(httpItem.EditedResp) }()
+			c.model.Custom.AddEditedResponse(httpItem.EditedResp, count+ctx.Session)
 		}
+		
 	}
-
-	// add the response to the history
-	// TODO: For whatever reason, I have to use a full HttpItem insteam of a Resp
-	c.model.Custom.EditItem(http_item, ctx.Session)
-
 	return r
 }
 
 // Executed when a request arrives
-func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+func (c *Controller) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+
+
 	var resp *http.Response
 	var bodyBytes []byte
 	if r != nil {
@@ -310,9 +498,9 @@ func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 		// Restore the io.ReadCloser to its original state
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	}
-	http_item := model.NewHttpItem(nil)
+	httpItem := model.NewHTTPItem(nil)
 	c.id = c.id + 1
-	http_item.ID = c.id
+	httpItem.ID = c.id
 
 	re := regexp.MustCompile(`\.(\w*)($|\?|\#)`)
 	matches := re.FindStringSubmatch(r.URL.Path)
@@ -324,9 +512,16 @@ func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 	if len(r.URL.RawQuery) > 0 || len(bodyBytes) > 0 {
 		params = true
 	}
+	ips, err := net.LookupHost(r.Host)
+	var ip string
+	if err == nil {
+		ip = "Unknown host"
+	}
+	ip = ips[0]
 	// this is the original request, save it for the history
-	http_item.Req = &model.Request{
-		Url:           r.URL,
+	httpItem.Req = &model.Request{
+		ID:			   count + ctx.Session,
+		URL:           r.URL,
 		Method:        r.Method,
 		Body:          bodyBytes,
 		Host:          r.Host,
@@ -335,17 +530,21 @@ func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 		Proto:         r.Proto,
 		Extension:     ext,
 		Params:        params,
+		IP:						 ip,
 	}
 
+	go func(){ c.requestEnc.Encode(httpItem.Req) }()
+	c.model.Custom.AddRequest(httpItem.Req, count+ctx.Session)
+
 	// activate interceptor
-	if c.Sess.Config.Interceptor && c.Sess.Config.ReqIntercept {
+	if Stg.Interceptor && Stg.ReqIntercept {
 
-		edited_req, edited_resp := c.interceptorRequestActions(r, nil, ctx)
+		editedReq, editedResp := c.interceptorRequestActions(r, nil, ctx)
 
-		if edited_req != nil {
-			var edited_bodyBytes []byte
-			edited_bodyBytes, _ = ioutil.ReadAll(edited_req.Body)
-			edited_req.Body = ioutil.NopCloser(bytes.NewBuffer(edited_bodyBytes))
+		if editedReq != nil {
+			var editedBodyBytes []byte
+			editedBodyBytes, _ = ioutil.ReadAll(editedReq.Body)
+			editedReq.Body = ioutil.NopCloser(bytes.NewBuffer(editedBodyBytes))
 
 			re := regexp.MustCompile(`\.(\w*)($|\?|\#)`)
 			matches := re.FindStringSubmatch(r.URL.Path)
@@ -354,36 +553,38 @@ func (c *CoreproxyController) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*ht
 				ext = matches[1]
 			}
 
-			http_item.EditedReq = &model.Request{
-				Url:           edited_req.URL,
-				Method:        edited_req.Method,
-				Body:          edited_bodyBytes,
-				Host:          edited_req.Host,
-				ContentLength: edited_req.ContentLength,
-				Headers:       cloneHeaders(edited_req.Header),
-				Proto:         edited_req.Proto,
+			httpItem.EditedReq = &model.Request{
+				ID:			   count + ctx.Session,
+				URL:           editedReq.URL,
+				Method:        editedReq.Method,
+				Body:          editedBodyBytes,
+				Host:          editedReq.Host,
+				ContentLength: editedReq.ContentLength,
+				Headers:       cloneHeaders(editedReq.Header),
+				Proto:         editedReq.Proto,
 				Extension:     ext,
 			}
-			r = edited_req
-			resp = edited_resp
-
+			r = editedReq
+			resp = editedResp
+			go func(){ c.requestEditedEnc.Encode(httpItem.EditedReq) }()
+			c.model.Custom.AddEditedRequest(httpItem.EditedReq, count+ctx.Session)
 		}
 
 	}
-
-	// add the request to the history
-	c.model.Custom.AddItem(http_item, ctx.Session)
-
 	return r, resp
 }
 
-func (c *CoreproxyController) ignoreHTTPSToggle(b bool) {
+func (c *Controller) ignoreHTTPSToggle(b bool) {
 	c.ignoreHTTPS = !c.ignoreHTTPS
 }
 
-func (c *CoreproxyController) broxyConnectHandle(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
+func (c *Controller) broxyConnectHandle(host string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
 	if c.ignoreHTTPS {
 		return goproxy.OkConnect, host
 	}
 	return goproxy.MitmConnect, host
+}
+
+func (c *Controller) saveSettings(){
+	c.Sess.PersistentProject.SaveSettings("coreproxy", Stg)
 }
