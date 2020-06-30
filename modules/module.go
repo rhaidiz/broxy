@@ -9,7 +9,7 @@ import (
 
 // LoadModules loads all the main modules
 func LoadModules(s *core.Session) {
-	s.LoadModule(coreproxy.LoadCoreProxyModule(s))
-	s.LoadModule(repeater.LoadRepeaterModule(s))
 	s.LoadModule(log.LoadLogModule(s))
+	s.LoadModule(repeater.LoadRepeaterModule(s))
+	s.LoadModule(coreproxy.LoadCoreProxyModule(s))
 }

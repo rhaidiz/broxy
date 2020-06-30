@@ -163,8 +163,8 @@ func (g *Broxygui) InitWith(s *bcore.Session) {
 
 //AddGuiModule adds a new module to the main GUI
 func (g *Broxygui) AddGuiModule(m bcore.GuiModule) {
-	g.tabWidget.SetCurrentIndex(0)
 	g.tabWidget.InsertTab(0,m.GetModuleGui().(widgets.QWidget_ITF), m.Title())
+	g.tabWidget.SetCurrentIndex(0)
 	if m.GetSettings() != nil {
 		g.settingsMapping[m.Title()] = m.GetSettings().(widgets.QWidget_ITF)
 		item := widgets.NewQTreeWidgetItem(0)
