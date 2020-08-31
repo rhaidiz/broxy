@@ -1,7 +1,6 @@
 package gui
 
 import (
-	"time"
 	"path/filepath"
 	"fmt"
 
@@ -128,9 +127,15 @@ func (g *Broxygui) saveProjectAction(b bool){
 
 
 func (g *Broxygui) newProjectAction(b bool){
-	p := filepath.Join(util.GetTmpDir(), fmt.Sprintf("%d",time.Now().UnixNano()))
-	fmt.Println(p)
-	c, err := project.NewPersistentProject("NewProject",p)
+	var fileDialog = widgets.NewQFileDialog2(g, "Create new project", "", "")
+	fileDialog.SetAcceptMode(widgets.QFileDialog__AcceptSave)
+	if fileDialog.Exec() != int(widgets.QDialog__Accepted) {
+		return
+	}
+	var fn = fileDialog.SelectedFiles()[0]
+	dir, file := filepath.Split(fn)
+
+	c, err := project.NewPersistentProject(file,dir)
 
 	if err != nil {
 		g.ShowErrorMessage(fmt.Sprintf("Error while creating project: %s",err))
