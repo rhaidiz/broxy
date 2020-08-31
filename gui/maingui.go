@@ -58,18 +58,18 @@ func (g *Broxygui) createMenuBar(){
 	menuBar := g.MenuBar().AddMenu2("&File")
 
 	newAction := widgets.NewQAction2("New project", g)
-	saveAction := widgets.NewQAction2("Persist project", g)
+	//saveAction := widgets.NewQAction2("Persist project", g)
 	openAction := widgets.NewQAction2("Open project...", g)
 	
 	menuBar.AddActions([]*widgets.QAction{})
-	menuBar.AddActions([]*widgets.QAction{newAction, saveAction,openAction})
+	menuBar.AddActions([]*widgets.QAction{newAction, openAction})
 
 	newAction.SetShortcuts2(gui.QKeySequence__New)
-	saveAction.SetShortcuts2(gui.QKeySequence__SaveAs)
+	//saveAction.SetShortcuts2(gui.QKeySequence__SaveAs)
 	openAction.SetShortcuts2(gui.QKeySequence__Open)
 	
 	newAction.ConnectTriggered(g.newProjectAction)
-	saveAction.ConnectTriggered(g.saveProjectAction)
+	//saveAction.ConnectTriggered(g.saveProjectAction)
 	openAction.ConnectTriggered(g.openProjectAction)
 
 }

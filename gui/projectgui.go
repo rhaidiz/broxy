@@ -10,7 +10,7 @@ import (
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
-	"time"
+	//"time"
 	"path/filepath"
 )
 
@@ -141,13 +141,20 @@ func (g *Projectgui) itemDoubleClicked(item *widgets.QListWidgetItem){
 
 func (g *Projectgui) newProject(b bool) {
 
-	p := filepath.Join(util.GetTmpDir(), fmt.Sprintf("%d",time.Now().UnixNano()))
-	c, err := project.NewPersistentProject("NewProject",p)
+	var fileDialog = widgets.NewQFileDialog2(g, "Create new project", "", "")
+	fileDialog.SetAcceptMode(widgets.QFileDialog__AcceptSave)
+	if fileDialog.Exec() != int(widgets.QDialog__Accepted) {
+		return
+	}
+	var fn = fileDialog.SelectedFiles()[0]
+	dir, file := filepath.Split(fn)
+
+	c, err := project.NewPersistentProject(file,dir)
 	if err != nil {
 		g.showErrorMessage(fmt.Sprintf("Error while creating a new project: %s",err))
 	}
 
-	// temporary, for now, everytime I create a new project I save it in the history
+	g.history.Add(&project.Project{file,dir})
 	gui := NewBroxygui(nil,0)
 	s := bcore.NewSession(g.config, c, gui)
 	//Load All modules
