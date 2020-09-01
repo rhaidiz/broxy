@@ -13,7 +13,7 @@ import (
 	"github.com/rhaidiz/broxy/util"
 )
 
-var broxyTitle = "Broxy (1.0.0-alpha.3)"
+var broxyTitle = "Broxy (1.0.0-alpha.3.1)"
 
 // Broxygui is the main GUI made of tabs
 type Broxygui struct {
