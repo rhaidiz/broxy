@@ -514,10 +514,11 @@ func (c *Controller) onReq(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Reques
 	}
 	ips, err := net.LookupHost(r.Host)
 	var ip string
-	if err == nil {
+	if err != nil {
 		ip = "Unknown host"
+	}else{
+		ip = ips[0]
 	}
-	ip = ips[0]
 	// this is the original request, save it for the history
 	httpItem.Req = &model.Request{
 		ID:			   count + ctx.Session,

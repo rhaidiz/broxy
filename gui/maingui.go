@@ -1,7 +1,6 @@
 package gui
 
 import (
-	"time"
 	"path/filepath"
 	"fmt"
 
@@ -14,7 +13,7 @@ import (
 	"github.com/rhaidiz/broxy/util"
 )
 
-var broxyTitle = "Broxy (1.0.0-alpha.3)"
+var broxyTitle = "Broxy (1.0.0-alpha.4)"
 
 // Broxygui is the main GUI made of tabs
 type Broxygui struct {
@@ -58,18 +57,18 @@ func (g *Broxygui) createMenuBar(){
 	menuBar := g.MenuBar().AddMenu2("&File")
 
 	newAction := widgets.NewQAction2("New project", g)
-	saveAction := widgets.NewQAction2("Persist project", g)
+	//saveAction := widgets.NewQAction2("Persist project", g)
 	openAction := widgets.NewQAction2("Open project...", g)
 	
 	menuBar.AddActions([]*widgets.QAction{})
-	menuBar.AddActions([]*widgets.QAction{newAction, saveAction,openAction})
+	menuBar.AddActions([]*widgets.QAction{newAction, openAction})
 
 	newAction.SetShortcuts2(gui.QKeySequence__New)
-	saveAction.SetShortcuts2(gui.QKeySequence__SaveAs)
+	//saveAction.SetShortcuts2(gui.QKeySequence__SaveAs)
 	openAction.SetShortcuts2(gui.QKeySequence__Open)
 	
 	newAction.ConnectTriggered(g.newProjectAction)
-	saveAction.ConnectTriggered(g.saveProjectAction)
+	//saveAction.ConnectTriggered(g.saveProjectAction)
 	openAction.ConnectTriggered(g.openProjectAction)
 
 }
@@ -128,9 +127,15 @@ func (g *Broxygui) saveProjectAction(b bool){
 
 
 func (g *Broxygui) newProjectAction(b bool){
-	p := filepath.Join(util.GetTmpDir(), fmt.Sprintf("%d",time.Now().UnixNano()))
-	fmt.Println(p)
-	c, err := project.NewPersistentProject("NewProject",p)
+	var fileDialog = widgets.NewQFileDialog2(g, "Create new project", "", "")
+	fileDialog.SetAcceptMode(widgets.QFileDialog__AcceptSave)
+	if fileDialog.Exec() != int(widgets.QDialog__Accepted) {
+		return
+	}
+	var fn = fileDialog.SelectedFiles()[0]
+	dir, file := filepath.Split(fn)
+
+	c, err := project.NewPersistentProject(file,dir)
 
 	if err != nil {
 		g.ShowErrorMessage(fmt.Sprintf("Error while creating project: %s",err))

@@ -156,18 +156,7 @@ func GetSettingsDir() string {
 
 // GetTmpDir returns the path to a temporary folder
 func GetTmpDir() string {
-	if runtime.GOOS == "linux" {
-		return filepath.Join("/tmp")
-	}
-
-	if runtime.GOOS == "darwin" {
-		return filepath.Join("/tmp")
-	}
-
-	if runtime.GOOS == "windows" {
-		return filepath.Join(os.Getenv("TEMP"))
-	}
-	return "./"
+	return os.TempDir()
 }
 
 func IsNil(i interface{}) bool {
