@@ -1,11 +1,10 @@
 # Broxy
 
 [![License](https://img.shields.io/badge/license-GPLv3-blue.svg)](https://raw.githubusercontent.com/rhaidiz/broxy/master/COPYING)
-![status](https://img.shields.io/badge/status-in_progress-yellow.svg)
 
 Broxy is an open source intercept proxy written in Go. It makes use of [goproxy](https://github.com/elazarl/goproxy) as core proxy implementation and the interface is implemented with a [Qt wrapper](https://github.com/therecipe/qt) for Go.
 
-**DISCLAIMER:** this is still an alpha software so bear with me.
+**DISCLAIMER:** this is a PoC to understand the feseability of the project. As a result of this test a new project has spawn, named [yves](https://github.com/rhaidiz/yves).
 
 ![intercept](https://github.com/rhaidiz/broxy/raw/master/media/main.png)
 
